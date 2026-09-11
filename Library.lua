@@ -2468,69 +2468,119 @@ end
 --//==================================================
 
 function Library:RefreshTheme()
-    -- Refresh every live UI object using the current theme.
+    local Theme = Library.Theme
+
+    local function ApplyStroke(Object, Color, Transparency)
+        for _, Child in ipairs(Object:GetChildren()) do
+            if Child:IsA("UIStroke") then
+                Child.Color = Color
+                if Transparency ~= nil then
+                    Child.Transparency = Transparency
+                end
+            end
+        end
+    end
+
+    local function ApplyElement(Object)
+        if Object:GetAttribute("MoonHubGroupbox") then
+            Object.BackgroundColor3 = Theme.Panel
+            ApplyStroke(Object, Theme.OutlineSoft, 0.22)
+            return
+        end
+
+        if Object.Name == "MainFrame" then
+            Object.BackgroundColor3 = Theme.Background
+            ApplyStroke(Object, Theme.OutlineSoft, 0.1)
+        elseif Object.Name == "TopBar" then
+            Object.BackgroundColor3 = Theme.Panel
+        elseif Object.Name == "Explorer" or Object.Name == "Modules" then
+            Object.BackgroundColor3 = Theme.Sidebar
+        elseif Object.Name == "Content" then
+            Object.BackgroundColor3 = Theme.Background
+        elseif Object.Name == "SearchBox" then
+            Object.BackgroundColor3 = Theme.Element
+            ApplyStroke(Object, Theme.Outline, 0.35)
+        elseif Object.Name == "ModuleContainer" and Object:IsA("ScrollingFrame") then
+            Object.ScrollBarImageColor3 = Theme.Outline
+        elseif Object.Name == "SearchHandle" then
+            Object.BackgroundColor3 = Theme.TextDim
+        elseif Object.Name == "CircleStroke" and Object:IsA("UIStroke") then
+            Object.Color = Theme.TextDim
+        elseif Object.Name == "Header" and Object:IsA("TextLabel") then
+            Object.TextColor3 = Theme.TextBright
+        elseif Object.Name == "Title" and Object:IsA("TextLabel") then
+            Object.TextColor3 = Theme.TextBright
+        elseif Object.Name == "Description" and Object:IsA("TextLabel") then
+            Object.TextColor3 = Theme.TextDim
+        elseif Object.Name == "Minimize" or Object.Name == "Close" then
+            Object.TextColor3 = Theme.TextDim
+        elseif Object.Name == "Text" and Object:IsA("TextLabel") then
+            Object.TextColor3 = Theme.Text
+        elseif Object.Name == "SearchInput" and Object:IsA("TextBox") then
+            Object.TextColor3 = Theme.Text
+            Object.PlaceholderColor3 = Theme.Placeholder
+        elseif Object.Name == "DropdownChevron" then
+            Object.BackgroundColor3 = Theme.Panel
+        elseif Object.Name == "ChevronLeft" or Object.Name == "ChevronRight" then
+            Object.BackgroundColor3 = Theme.TextDim
+        elseif Object.Name == "KeyButton" and Object:IsA("TextButton") then
+            Object.BackgroundColor3 = Theme.Panel
+            Object.TextColor3 = Theme.TextDim
+            ApplyStroke(Object, Theme.Outline, 0.15)
+        elseif Object.Name == "Option_1" or string.sub(Object.Name, 1, 7) == "Option_" then
+            if Object:IsA("TextButton") then
+                Object.BackgroundColor3 = Theme.Panel
+                Object.TextColor3 = Theme.Text
+            end
+        elseif Object.Name == "SliderTrack" then
+            Object.BackgroundColor3 = Theme.ToggleOff
+        elseif Object.Name == "SliderFill" then
+            Object.BackgroundColor3 = Theme.Accent
+        elseif Object.Name == "SliderThumb" then
+            Object.BackgroundColor3 = Theme.TextBright
+            ApplyStroke(Object, Theme.Outline, 0)
+        elseif Object.Name == "ThumbStroke" and Object:IsA("UIStroke") then
+            Object.Color = Theme.Outline
+        elseif Object.Name == "Notification" then
+            Object.BackgroundColor3 = Theme.Panel
+            ApplyStroke(Object, Theme.OutlineSoft, 0.18)
+        elseif Object.Name == "Progress" then
+            Object.BackgroundColor3 = Theme.Accent
+        elseif Object.Name == "ProgressBackground" then
+            Object.BackgroundColor3 = Theme.Element
+        elseif Object.Name == "OptionsFrame" then
+            Object.BackgroundColor3 = Theme.Panel
+        elseif Object.Name == "Divider" then
+            Object.BackgroundColor3 = Theme.Outline
+        elseif Object:IsA("TextBox") then
+            Object.TextColor3 = Theme.Text
+            Object.PlaceholderColor3 = Theme.Placeholder
+        elseif Object:IsA("TextButton") then
+            Object.BackgroundColor3 = Theme.Element
+            Object.TextColor3 = Theme.Text
+        elseif Object:IsA("TextLabel") and Object.BackgroundTransparency < 1 then
+            Object.TextColor3 = Theme.Text
+        end
+    end
+
     for _, Gui in ipairs(PlayerGui:GetChildren()) do
         if Gui.Name == "MoonHub" or Gui.Name == "MoonHubNotifications" then
             for _, Object in ipairs(Gui:GetDescendants()) do
                 pcall(function()
-                    if Object:GetAttribute("MoonHubGroupbox") then
-                        Object.BackgroundColor3 = Library.Theme.Panel
+                    ApplyElement(Object)
 
-                        local UIStroke = Object:FindFirstChildOfClass("UIStroke")
-                        if UIStroke then
-                            UIStroke.Color = Library.Theme.OutlineSoft
-                        end
-                    elseif Object.Name == "MainFrame" then
-                        Object.BackgroundColor3 = Library.Theme.Background
-                    elseif Object.Name == "TopBar" then
-                        Object.BackgroundColor3 = Library.Theme.Panel
-                    elseif Object.Name == "Explorer" or Object.Name == "Modules" then
-                        Object.BackgroundColor3 = Library.Theme.Sidebar
-                    elseif Object.Name == "Content" then
-                        Object.BackgroundColor3 = Library.Theme.Background
-                    elseif Object.Name == "SearchBox" then
-                        Object.BackgroundColor3 = Library.Theme.Element
-                    elseif Object.Name == "SearchHandle" then
-                        Object.BackgroundColor3 = Library.Theme.TextDim
-                    elseif Object.Name == "CircleStroke" then
-                        Object.Color = Library.Theme.TextDim
-                    elseif Object.Name == "SliderTrack" then
-    Object.BackgroundColor3 = Library.Theme.ToggleOff
-elseif Object.Name == "SliderFill" then
-    Object.BackgroundColor3 = Library.Theme.Accent
-elseif Object.Name == "SliderThumb" then
-    Object.BackgroundColor3 = Library.Theme.TextBright
-elseif Object.Name == "ThumbStroke" then
-    Object.Color = Library.Theme.Outline
-elseif Object.Name == "ChevronLeft" or Object.Name == "ChevronRight" then
-                        Object.BackgroundColor3 = Library.Theme.TextDim
-                    elseif Object.Name == "Header" then
-                        Object.TextColor3 = Library.Theme.TextBright
-                    elseif Object.Name == "Text" and Object:IsA("TextLabel") then
-                        Object.TextColor3 = Library.Theme.Text
-                    elseif Object.Name == "Title" and Object:IsA("TextLabel") then
-                        Object.TextColor3 = Library.Theme.TextBright
-                    elseif Object.Name == "Description" and Object:IsA("TextLabel") then
-                        Object.TextColor3 = Library.Theme.TextDim
-                    elseif Object:IsA("TextBox") then
-                        Object.TextColor3 = Library.Theme.Text
-                        Object.PlaceholderColor3 = Library.Theme.Placeholder
-                    elseif Object:IsA("TextButton") then
-                        if Object.Name:find("Module") then
-                            Object.BackgroundColor3 = Library.Theme.Element
-                        else
-                            Object.BackgroundColor3 = Library.Theme.Element
-                            Object.TextColor3 = Library.Theme.Text
-                        end
-                    elseif Object:IsA("Frame") then
-                        if Object.Name == "Progress" or Object.Name == "Accent" then
-                            Object.BackgroundColor3 = Library.Theme.Accent
-                        elseif Object.Name == "Fill" then
-                            Object.BackgroundColor3 = Library.Theme.Accent
-                        elseif Object.Name == "Switch" then
-                            -- Toggle state is restored below.
-                        elseif Object.Name == "Knob" then
-                            -- Toggle state is restored below.
+                    if Object:IsA("UIStroke") then
+                        local Parent = Object.Parent
+                        if Parent then
+                            if Parent:GetAttribute("MoonHubGroupbox") then
+                                Object.Color = Theme.OutlineSoft
+                            elseif Parent.Name == "Notification" then
+                                Object.Color = Theme.OutlineSoft
+                            elseif Parent.Name == "SearchBox" then
+                                Object.Color = Theme.Outline
+                            elseif Parent.Name == "KeyButton" or Parent.Name == "Button" then
+                                Object.Color = Theme.Outline
+                            end
                         end
                     end
                 end)
@@ -2540,29 +2590,180 @@ elseif Object.Name == "ChevronLeft" or Object.Name == "ChevronRight" then
 
     for _, Toggle in pairs(Library.Toggles) do
         pcall(function()
-            local switch = Toggle.Container:FindFirstChild("Switch")
-            local knob = switch and switch:FindFirstChild("Knob")
-            local label = Toggle.Container:FindFirstChild("Text")
+            local Container = Toggle.Container
+            local Switch = Container:FindFirstChild("Switch")
+            local Knob = Switch and Switch:FindFirstChild("Knob")
+            local Label = Container:FindFirstChild("Text")
 
-            if switch then
-                switch.BackgroundColor3 = Toggle.Value and Library.Theme.ToggleOn or Library.Theme.ToggleOff
+            Container.BackgroundColor3 = Theme.Element
+            ApplyStroke(Container, Theme.Outline, 0.25)
+
+            if Switch then
+                Switch.BackgroundColor3 = Toggle.Value and Theme.ToggleOn or Theme.ToggleOff
             end
 
-            if knob then
-                knob.BackgroundColor3 = Toggle.Value and Library.Theme.TextBright or Library.Theme.KnobOff
-                knob.Position = Toggle.Value
+            if Knob then
+                Knob.BackgroundColor3 = Toggle.Value and Theme.TextBright or Theme.KnobOff
+                Knob.Position = Toggle.Value
                     and UDim2.new(1, -14, 0.5, -6)
                     or UDim2.new(0, 2, 0.5, -6)
             end
 
-            if label then
-                label.TextColor3 = Toggle.Value and Library.Theme.TextBright or Library.Theme.Text
+            if Label then
+                Label.TextColor3 = Toggle.Value and Theme.TextBright or Theme.Text
+            end
+        end)
+    end
+
+    for _, Button in pairs(Library.Buttons) do
+        pcall(function()
+            Button.Container.BackgroundColor3 = Theme.Element
+            Button.Container.TextColor3 = Theme.Text
+            ApplyStroke(Button.Container, Theme.Outline, 0.25)
+        end)
+    end
+
+    for _, Picker in pairs(Library.KeyPickers) do
+        pcall(function()
+            Picker.Container.BackgroundColor3 = Theme.Element
+            ApplyStroke(Picker.Container, Theme.Outline, 0.25)
+
+            local Label = Picker.Container:FindFirstChild("Text")
+            if Label then
+                Label.TextColor3 = Theme.Text
+            end
+
+            local KeyButton = Picker.Button or Picker.Container:FindFirstChild("KeyButton")
+            if KeyButton then
+                if Picker.Listening then
+                    KeyButton.BackgroundColor3 = Theme.ElementHover
+                    KeyButton.TextColor3 = Theme.TextBright
+                else
+                    KeyButton.BackgroundColor3 = Theme.Panel
+                    KeyButton.TextColor3 = Theme.TextDim
+                end
+                ApplyStroke(KeyButton, Theme.Outline, 0.15)
+            end
+        end)
+    end
+
+    for _, Dropdown in pairs(Library.Options) do
+        if Dropdown.Type == "Dropdown" then
+            pcall(function()
+                local Container = Dropdown.Container
+                Container.BackgroundTransparency = 1
+
+                local MainButton = Container:FindFirstChildWhichIsA("TextButton")
+                if MainButton then
+                    MainButton.BackgroundColor3 = Theme.Element
+                    ApplyStroke(MainButton, Theme.Outline, 0.25)
+
+                    local Label = MainButton:FindFirstChild("Text")
+                    if Label then
+                        Label.TextColor3 = Theme.Text
+                    end
+
+                    local Left = MainButton:FindFirstChild("DropdownChevron")
+                    if Left then
+                        for _, Chevron in ipairs(Left:GetChildren()) do
+                            if Chevron:IsA("Frame") then
+                                Chevron.BackgroundColor3 = Theme.TextDim
+                            end
+                        end
+                    end
+                end
+
+                for _, Object in ipairs(Container:GetDescendants()) do
+                    if Object:IsA("TextButton") and string.sub(Object.Name, 1, 7) == "Option_" then
+                        Object.BackgroundColor3 = Theme.Panel
+                        Object.TextColor3 = Theme.Text
+                    elseif Object.Name == "ChevronLeft" or Object.Name == "ChevronRight" then
+                        Object.BackgroundColor3 = Theme.TextDim
+                    end
+                end
+            end)
+        end
+    end
+
+    for _, Input in pairs(Library.Labels) do
+        pcall(function()
+            if Input.Type == "Input" then
+                local Holder = Input.Container
+                local Label = Holder:FindFirstChildOfClass("TextLabel")
+                local Box = Input.Box or Holder:FindFirstChildOfClass("TextBox")
+
+                if Label then
+                    Label.TextColor3 = Theme.Text
+                end
+
+                if Box then
+                    Box.BackgroundColor3 = Theme.Element
+                    Box.TextColor3 = Theme.Text
+                    Box.PlaceholderColor3 = Theme.Placeholder
+                    ApplyStroke(Box, Theme.Outline, 0.25)
+                end
+            elseif Input.Type == "Label" then
+                Input.Container.TextColor3 = Theme.TextDim
+            end
+        end)
+    end
+
+    for _, Option in pairs(Library.Options) do
+        if Option.Type == "Slider" then
+            pcall(function()
+                local Holder = Option.Container
+                local Label = Holder:FindFirstChildOfClass("TextLabel")
+                local Track = Holder:FindFirstChild("SliderTrack")
+                local Fill = Track and Track:FindFirstChild("SliderFill")
+                local Thumb = Track and Track:FindFirstChild("SliderThumb")
+                local ValueLabel = nil
+
+                local TextLabels = Holder:GetChildren()
+                for _, Child in ipairs(TextLabels) do
+                    if Child:IsA("TextLabel") and Child ~= Label then
+                        ValueLabel = Child
+                    end
+                end
+
+                if Label then
+                    Label.TextColor3 = Theme.Text
+                end
+
+                if ValueLabel then
+                    ValueLabel.TextColor3 = Theme.TextDim
+                end
+
+                if Track then
+                    Track.BackgroundColor3 = Theme.ToggleOff
+                end
+
+                if Fill then
+                    Fill.BackgroundColor3 = Theme.Accent
+                end
+
+                if Thumb then
+                    Thumb.BackgroundColor3 = Theme.TextBright
+                    ApplyStroke(Thumb, Theme.Outline, 0)
+                end
+            end)
+        end
+    end
+
+    for _, TabButton in pairs(Library.Windows) do
+        pcall(function()
+            for _, Tab in pairs(TabButton.Tabs) do
+                Tab.Button.BackgroundColor3 = TabButton.ActiveTab == Tab and Theme.Selected or Theme.Element
+                local Text = Tab.Button:FindFirstChild("Text")
+                if Text then
+                    Text.TextColor3 = TabButton.ActiveTab == Tab and Theme.TextBright or Theme.TextDim
+                    Text.TextStrokeColor3 = Theme.Background
+                end
             end
         end)
     end
 
     for _, Callback in ipairs(Library._ThemeCallbacks) do
-        pcall(Callback, Library.Theme)
+        pcall(Callback, Theme)
     end
 end
 
