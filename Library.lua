@@ -8,27 +8,37 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Library = {
     Flags = {},
     Items = {},
+
     Theme = {
-        Background = Color3.fromRGB(8, 8, 8),
-        Surface = Color3.fromRGB(11, 11, 11),
-        Element = Color3.fromRGB(15, 15, 15),
-        Stroke = Color3.fromRGB(18, 18, 18),
-        Text = Color3.fromRGB(235, 235, 235),
-        SubText = Color3.fromRGB(145, 145, 145),
-        Muted = Color3.fromRGB(90, 90, 90),
-        Accent = Color3.fromRGB(125, 105, 255),
-        AccentDark = Color3.fromRGB(75, 62, 155),
-        White = Color3.fromRGB(255, 255, 255)
+        Background = Color3.fromRGB(9, 10, 13),
+        Surface = Color3.fromRGB(13, 15, 19),
+        Surface2 = Color3.fromRGB(17, 19, 24),
+        Element = Color3.fromRGB(22, 25, 31),
+        ElementHover = Color3.fromRGB(27, 30, 38),
+
+        Stroke = Color3.fromRGB(35, 39, 48),
+        StrokeSoft = Color3.fromRGB(28, 31, 39),
+
+        Text = Color3.fromRGB(245, 246, 249),
+        SubText = Color3.fromRGB(166, 171, 182),
+        Muted = Color3.fromRGB(105, 111, 124),
+
+        Accent = Color3.fromRGB(108, 99, 255),
+        AccentHover = Color3.fromRGB(124, 115, 255),
+        AccentDark = Color3.fromRGB(79, 72, 190),
+
+        White = Color3.fromRGB(255, 255, 255),
+        Red = Color3.fromRGB(239, 92, 92)
     }
 }
 
 local FONT = Enum.Font.GothamMedium
-local FONT_BOLD = Enum.Font.GothamSemibold
+local FONT_BOLD = Enum.Font.GothamBold
 
-local function New(class, properties, parent)
+local function New(class, props, parent)
     local object = Instance.new(class)
 
-    for property, value in pairs(properties or {}) do
+    for property, value in pairs(props or {}) do
         object[property] = value
     end
 
@@ -63,11 +73,36 @@ local function Padding(parent, left, top, right, bottom)
 end
 
 local function Tween(object, properties, duration)
+    if not object or not object.Parent then
+        return
+    end
+
     TweenService:Create(
         object,
-        TweenInfo.new(duration or 0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+        TweenInfo.new(
+            duration or 0.18,
+            Enum.EasingStyle.Quint,
+            Enum.EasingDirection.Out
+        ),
         properties
     ):Play()
+end
+
+local function Label(parent, text, size, color, font)
+    return New("TextLabel", {
+        BackgroundTransparency = 1,
+        Text = text or "",
+        TextColor3 = color or Library.Theme.Text,
+        TextSize = size or 13,
+        Font = font or FONT,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Center,
+        TextTruncate = Enum.TextTruncate.AtEnd
+    }, parent)
+end
+
+local function SetFlag(name, value)
+    Library.Flags[name] = value
 end
 
 local function MakeDraggable(frame, handle)
@@ -75,22 +110,21 @@ local function MakeDraggable(frame, handle)
     local dragStart
     local startPosition
 
-    handle = handle or frame
-
     handle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
-
-            dragging = true
-            dragStart = input.Position
-            startPosition = frame.Position
-
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1
+            and input.UserInputType ~= Enum.UserInputType.Touch then
+            return
         end
+
+        dragging = true
+        dragStart = input.Position
+        startPosition = frame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end)
 
     UserInputService.InputChanged:Connect(function(input)
@@ -114,23 +148,6 @@ local function MakeDraggable(frame, handle)
     end)
 end
 
-local function CreateLabel(parent, text, size, color, font)
-    return New("TextLabel", {
-        BackgroundTransparency = 1,
-        Text = text or "",
-        TextColor3 = color or Library.Theme.Text,
-        TextSize = size or 13,
-        Font = font or FONT,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextYAlignment = Enum.TextYAlignment.Center,
-        AutomaticSize = Enum.AutomaticSize.None
-    }, parent)
-end
-
-local function SetFlag(name, value)
-    Library.Flags[name] = value
-end
-
 local WindowMethods = {}
 local TabMethods = {}
 local GroupboxMethods = {}
@@ -139,7 +156,7 @@ function Library:CreateWindow(options)
     options = options or {}
 
     local title = options.Title or "Library"
-    local size = options.Size or UDim2.fromOffset(680, 520)
+    local size = options.Size or UDim2.fromOffset(820, 570)
 
     local gui = New("ScreenGui", {
         Name = "UILibrary",
@@ -151,42 +168,46 @@ function Library:CreateWindow(options)
     local main = New("Frame", {
         Name = "Window",
         Size = size,
-        Position = UDim2.new(0.5, -size.X.Offset / 2, 0.5, -size.Y.Offset / 2),
+        Position = UDim2.new(
+            0.5,
+            -size.X.Offset / 2,
+            0.5,
+            -size.Y.Offset / 2
+        ),
         BackgroundColor3 = Library.Theme.Background,
         BorderSizePixel = 0,
         ClipsDescendants = true
     }, gui)
 
-    Corner(main, 10)
+    Corner(main, 13)
     Stroke(main, Library.Theme.Stroke, 1)
 
     local topbar = New("Frame", {
-        Name = "Topbar",
-        Size = UDim2.new(1, 0, 0, 46),
+        Size = UDim2.new(1, 0, 0, 56),
         BackgroundColor3 = Library.Theme.Background,
         BorderSizePixel = 0
     }, main)
 
-    local topLine = New("Frame", {
+    local line = New("Frame", {
         Size = UDim2.new(1, -28, 0, 1),
         Position = UDim2.new(0, 14, 1, -1),
-        BackgroundColor3 = Library.Theme.Stroke,
+        BackgroundColor3 = Library.Theme.StrokeSoft,
         BorderSizePixel = 0
     }, topbar)
 
     local logo = New("Frame", {
-        Size = UDim2.fromOffset(26, 26),
-        Position = UDim2.new(0, 12, 0.5, -13),
+        Size = UDim2.fromOffset(30, 30),
+        Position = UDim2.new(0, 15, 0.5, -15),
         BackgroundColor3 = Library.Theme.Accent,
         BorderSizePixel = 0
     }, topbar)
 
-    Corner(logo, 8)
+    Corner(logo, 9)
 
-    local logoText = CreateLabel(
+    local logoText = Label(
         logo,
         string.sub(title, 1, 1):upper(),
-        13,
+        14,
         Library.Theme.White,
         FONT_BOLD
     )
@@ -194,7 +215,7 @@ function Library:CreateWindow(options)
     logoText.Size = UDim2.fromScale(1, 1)
     logoText.TextXAlignment = Enum.TextXAlignment.Center
 
-    local titleLabel = CreateLabel(
+    local titleLabel = Label(
         topbar,
         title,
         14,
@@ -202,26 +223,46 @@ function Library:CreateWindow(options)
         FONT_BOLD
     )
 
-    titleLabel.Position = UDim2.new(0, 48, 0, 0)
-    titleLabel.Size = UDim2.new(0, 300, 1, 0)
+    titleLabel.Position = UDim2.new(0, 57, 0, 0)
+    titleLabel.Size = UDim2.new(0, 320, 1, 0)
+
+    local subtitle = Label(
+        topbar,
+        "Modern interface",
+        10,
+        Library.Theme.Muted,
+        FONT
+    )
+
+    subtitle.Position = UDim2.new(0, 57, 0, 29)
+    subtitle.Size = UDim2.new(0, 250, 0, 18)
 
     local close = New("TextButton", {
-        Size = UDim2.fromOffset(30, 30),
-        Position = UDim2.new(1, -40, 0.5, -15),
-        BackgroundTransparency = 1,
+        Size = UDim2.fromOffset(34, 34),
+        Position = UDim2.new(1, -48, 0.5, -17),
+        BackgroundColor3 = Library.Theme.Surface2,
+        BorderSizePixel = 0,
         Text = "×",
         TextColor3 = Library.Theme.SubText,
-        TextSize = 20,
+        TextSize = 18,
         Font = FONT_BOLD,
         AutoButtonColor = false
     }, topbar)
 
+    Corner(close, 9)
+
     close.MouseEnter:Connect(function()
-        Tween(close, {TextColor3 = Color3.fromRGB(255, 100, 100)})
+        Tween(close, {
+            BackgroundColor3 = Color3.fromRGB(55, 29, 32),
+            TextColor3 = Library.Theme.Red
+        })
     end)
 
     close.MouseLeave:Connect(function()
-        Tween(close, {TextColor3 = Library.Theme.SubText})
+        Tween(close, {
+            BackgroundColor3 = Library.Theme.Surface2,
+            TextColor3 = Library.Theme.SubText
+        })
     end)
 
     close.MouseButton1Click:Connect(function()
@@ -229,24 +270,20 @@ function Library:CreateWindow(options)
     end)
 
     local content = New("Frame", {
-        Name = "Content",
-        Size = UDim2.new(1, 0, 1, -46),
-        Position = UDim2.new(0, 0, 0, 46),
+        Size = UDim2.new(1, 0, 1, -56),
+        Position = UDim2.new(0, 0, 0, 56),
         BackgroundTransparency = 1
     }, main)
 
     local sidebar = New("Frame", {
-        Name = "Sidebar",
-        Size = UDim2.fromOffset(150, 1),
-        Position = UDim2.new(0, 0, 0, 0),
-        BackgroundColor3 = Library.Theme.Background,
+        Size = UDim2.fromOffset(170, 1),
+        BackgroundColor3 = Library.Theme.Surface,
         BorderSizePixel = 0
     }, content)
 
-    Padding(sidebar, 10, 12, 10, 12)
+    Padding(sidebar, 12, 14, 12, 14)
 
     local tabs = New("ScrollingFrame", {
-        Name = "Tabs",
         Size = UDim2.fromScale(1, 1),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
@@ -256,15 +293,15 @@ function Library:CreateWindow(options)
     }, sidebar)
 
     local tabLayout = New("UIListLayout", {
-        Padding = UDim.new(0, 5),
+        Padding = UDim.new(0, 6),
         SortOrder = Enum.SortOrder.LayoutOrder
     }, tabs)
 
     local body = New("Frame", {
-        Name = "Body",
-        Size = UDim2.new(1, -150, 1, 0),
-        Position = UDim2.new(0, 150, 0, 0),
-        BackgroundTransparency = 1
+        Size = UDim2.new(1, -170, 1, 0),
+        Position = UDim2.new(0, 170, 0, 0),
+        BackgroundColor3 = Library.Theme.Background,
+        BorderSizePixel = 0
     }, content)
 
     local window = {
@@ -288,94 +325,110 @@ function Library:CreateWindow(options)
 
     function window:SetSize(value)
         main.Size = value
+        main.Position = UDim2.new(
+            0.5,
+            -value.X.Offset / 2,
+            0.5,
+            -value.Y.Offset / 2
+        )
     end
 
     return window
 end
 
 function WindowMethods:AddTab(name)
-    local tabButton = New("TextButton", {
+    local button = New("TextButton", {
         Name = name,
-        Size = UDim2.new(1, 0, 0, 36),
-        BackgroundColor3 = Library.Theme.Background,
+        Size = UDim2.new(1, 0, 0, 39),
+        BackgroundColor3 = Library.Theme.Surface,
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         Text = "",
         AutoButtonColor = false
     }, self.TabContainer)
 
-    Corner(tabButton, 8)
+    Corner(button, 9)
 
     local indicator = New("Frame", {
-        Size = UDim2.fromOffset(3, 16),
-        Position = UDim2.new(0, 0, 0.5, -8),
+        Size = UDim2.fromOffset(3, 18),
+        Position = UDim2.new(0, 0, 0.5, -9),
         BackgroundColor3 = Library.Theme.Accent,
         BackgroundTransparency = 1,
         BorderSizePixel = 0
-    }, tabButton)
+    }, button)
 
     Corner(indicator, 3)
 
-    local label = CreateLabel(
-        tabButton,
+    local icon = Label(
+        button,
+        "◆",
+        9,
+        Library.Theme.Muted,
+        FONT_BOLD
+    )
+
+    icon.Position = UDim2.new(0, 13, 0, 0)
+    icon.Size = UDim2.fromOffset(15, 39)
+    icon.TextXAlignment = Enum.TextXAlignment.Center
+
+    local label = Label(
+        button,
         name,
         12,
         Library.Theme.SubText,
-        FONT
+        FONT_BOLD
     )
 
-    label.Position = UDim2.new(0, 14, 0, 0)
-    label.Size = UDim2.new(1, -14, 1, 0)
+    label.Position = UDim2.new(0, 34, 0, 0)
+    label.Size = UDim2.new(1, -40, 1, 0)
 
     local page = New("ScrollingFrame", {
         Name = name .. "_Page",
         Size = UDim2.fromScale(1, 1),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
-        ScrollBarThickness = 2,
+        ScrollBarThickness = 3,
         ScrollBarImageColor3 = Library.Theme.Stroke,
+        ScrollBarImageTransparency = 0.25,
         CanvasSize = UDim2.new(),
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
         Visible = false
     }, self.Body)
 
-    Padding(page, 14, 12, 14, 14)
+    Padding(page, 18, 16, 18, 18)
 
     local columns = New("Frame", {
-        Size = UDim2.new(1, 0, 1, 0),
+        Size = UDim2.new(1, 0, 0, 0),
         BackgroundTransparency = 1,
         AutomaticSize = Enum.AutomaticSize.Y
     }, page)
 
     local left = New("Frame", {
-        Name = "Left",
         Size = UDim2.new(0.5, -7, 0, 0),
-        Position = UDim2.new(0, 0, 0, 0),
         BackgroundTransparency = 1,
         AutomaticSize = Enum.AutomaticSize.Y
     }, columns)
 
     local right = New("Frame", {
-        Name = "Right",
         Size = UDim2.new(0.5, -7, 0, 0),
         Position = UDim2.new(0.5, 7, 0, 0),
         BackgroundTransparency = 1,
         AutomaticSize = Enum.AutomaticSize.Y
     }, columns)
 
-    local leftLayout = New("UIListLayout", {
-        Padding = UDim.new(0, 10),
+    New("UIListLayout", {
+        Padding = UDim.new(0, 12),
         SortOrder = Enum.SortOrder.LayoutOrder
     }, left)
 
-    local rightLayout = New("UIListLayout", {
-        Padding = UDim.new(0, 10),
+    New("UIListLayout", {
+        Padding = UDim.new(0, 12),
         SortOrder = Enum.SortOrder.LayoutOrder
     }, right)
 
     local tab = {
         Name = name,
-        Button = tabButton,
+        Button = button,
         Page = page,
         Left = left,
         Right = right,
@@ -384,24 +437,32 @@ function WindowMethods:AddTab(name)
 
     setmetatable(tab, {__index = TabMethods})
 
-    tabButton.MouseEnter:Connect(function()
+    button.MouseEnter:Connect(function()
         if self.ActiveTab ~= tab then
-            Tween(tabButton, {
+            Tween(button, {
                 BackgroundColor3 = Library.Theme.Element,
                 BackgroundTransparency = 0
             })
-        end
-    end)
 
-    tabButton.MouseLeave:Connect(function()
-        if self.ActiveTab ~= tab then
-            Tween(tabButton, {
-                BackgroundTransparency = 1
+            Tween(label, {
+                TextColor3 = Library.Theme.Text
             })
         end
     end)
 
-    tabButton.MouseButton1Click:Connect(function()
+    button.MouseLeave:Connect(function()
+        if self.ActiveTab ~= tab then
+            Tween(button, {
+                BackgroundTransparency = 1
+            })
+
+            Tween(label, {
+                TextColor3 = Library.Theme.SubText
+            })
+        end
+    end)
+
+    button.MouseButton1Click:Connect(function()
         self:SelectTab(tab)
     end)
 
@@ -415,27 +476,33 @@ function WindowMethods:AddTab(name)
 end
 
 function WindowMethods:SelectTab(tab)
-    if self.ActiveTab == tab then
-        return
-    end
-
     for _, other in ipairs(self.Tabs) do
         local active = other == tab
 
         other.Page.Visible = active
 
         Tween(other.Button, {
-            BackgroundColor3 = active and Library.Theme.Element or Library.Theme.Background,
+            BackgroundColor3 = active
+                and Library.Theme.Element
+                or Library.Theme.Surface,
             BackgroundTransparency = active and 0 or 1
         })
 
-        Tween(other.Button:FindFirstChildOfClass("TextLabel"), {
-            TextColor3 = active and Library.Theme.Text or Library.Theme.SubText
-        })
+        local label = other.Button:FindFirstChildOfClass("TextLabel")
+        if label then
+            Tween(label, {
+                TextColor3 = active
+                    and Library.Theme.Text
+                    or Library.Theme.SubText
+            })
+        end
 
-        Tween(other.Button:FindFirstChildOfClass("Frame"), {
-            BackgroundTransparency = active and 0 or 1
-        })
+        local indicator = other.Button:FindFirstChild("Frame")
+        if indicator then
+            Tween(indicator, {
+                BackgroundTransparency = active and 0 or 1
+            })
+        end
     end
 
     self.ActiveTab = tab
@@ -458,31 +525,37 @@ function TabMethods:_CreateGroupbox(name, parent)
         AutomaticSize = Enum.AutomaticSize.Y
     }, parent)
 
-    Corner(box, 9)
-    Stroke(box, Library.Theme.Stroke, 1)
+    Corner(box, 11)
+    Stroke(box, Library.Theme.StrokeSoft, 1)
 
-    Padding(box, 10, 9, 10, 10)
+    Padding(box, 14, 13, 14, 14)
 
-    local title = CreateLabel(
+    local title = Label(
         box,
         name,
-        12,
+        13,
         Library.Theme.Text,
         FONT_BOLD
     )
 
-    title.Size = UDim2.new(1, 0, 0, 22)
+    title.Size = UDim2.new(1, 0, 0, 23)
+
+    local line = New("Frame", {
+        Size = UDim2.new(1, 0, 0, 1),
+        Position = UDim2.new(0, 0, 0, 31),
+        BackgroundColor3 = Library.Theme.StrokeSoft,
+        BorderSizePixel = 0
+    }, box)
 
     local container = New("Frame", {
-        Name = "Container",
         Size = UDim2.new(1, 0, 0, 0),
-        Position = UDim2.new(0, 0, 0, 27),
+        Position = UDim2.new(0, 0, 0, 42),
         BackgroundTransparency = 1,
         AutomaticSize = Enum.AutomaticSize.Y
     }, box)
 
     local layout = New("UIListLayout", {
-        Padding = UDim.new(0, 7),
+        Padding = UDim.new(0, 9),
         SortOrder = Enum.SortOrder.LayoutOrder
     }, container)
 
@@ -500,14 +573,14 @@ end
 
 function GroupboxMethods:AddLabel(text)
     local holder = New("Frame", {
-        Size = UDim2.new(1, 0, 0, 20),
+        Size = UDim2.new(1, 0, 0, 24),
         BackgroundTransparency = 1
     }, self.Container)
 
-    local label = CreateLabel(
+    local label = Label(
         holder,
         text,
-        12,
+        11,
         Library.Theme.SubText,
         FONT
     )
@@ -515,25 +588,23 @@ function GroupboxMethods:AddLabel(text)
     label.Size = UDim2.fromScale(1, 1)
 
     table.insert(self.Items, holder)
-
     return holder
 end
 
 function GroupboxMethods:AddDivider()
     local divider = New("Frame", {
         Size = UDim2.new(1, 0, 0, 1),
-        BackgroundColor3 = Library.Theme.Stroke,
+        BackgroundColor3 = Library.Theme.StrokeSoft,
         BorderSizePixel = 0
     }, self.Container)
 
     table.insert(self.Items, divider)
-
     return divider
 end
 
 function GroupboxMethods:AddButton(text, callback)
     local button = New("TextButton", {
-        Size = UDim2.new(1, 0, 0, 34),
+        Size = UDim2.new(1, 0, 0, 38),
         BackgroundColor3 = Library.Theme.Element,
         BorderSizePixel = 0,
         Text = text,
@@ -543,12 +614,12 @@ function GroupboxMethods:AddButton(text, callback)
         AutoButtonColor = false
     }, self.Container)
 
-    Corner(button, 8)
+    Corner(button, 9)
     Stroke(button, Library.Theme.Stroke, 1)
 
     button.MouseEnter:Connect(function()
         Tween(button, {
-            BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+            BackgroundColor3 = Library.Theme.ElementHover
         })
     end)
 
@@ -566,8 +637,8 @@ function GroupboxMethods:AddButton(text, callback)
 
     button.MouseButton1Up:Connect(function()
         Tween(button, {
-            BackgroundColor3 = Library.Theme.Element
-        }, 0.12)
+            BackgroundColor3 = Library.Theme.ElementHover
+        }, 0.1)
     end)
 
     button.MouseButton1Click:Connect(function()
@@ -577,7 +648,6 @@ function GroupboxMethods:AddButton(text, callback)
     end)
 
     table.insert(self.Items, button)
-
     return button
 end
 
@@ -585,40 +655,40 @@ function GroupboxMethods:AddToggle(flag, options)
     options = options or {}
 
     local holder = New("Frame", {
-        Size = UDim2.new(1, 0, 0, 34),
+        Size = UDim2.new(1, 0, 0, 36),
         BackgroundTransparency = 1
     }, self.Container)
 
-    local label = CreateLabel(
+    local label = Label(
         holder,
         options.Text or flag,
         12,
         Library.Theme.Text,
-        FONT
+        FONT_BOLD
     )
 
-    label.Size = UDim2.new(1, -50, 1, 0)
+    label.Size = UDim2.new(1, -58, 1, 0)
 
     local toggle = New("TextButton", {
-        Size = UDim2.fromOffset(34, 19),
-        Position = UDim2.new(1, -34, 0.5, -9),
+        Size = UDim2.fromOffset(40, 22),
+        Position = UDim2.new(1, -40, 0.5, -11),
         BackgroundColor3 = Library.Theme.Element,
         BorderSizePixel = 0,
         Text = "",
         AutoButtonColor = false
     }, holder)
 
-    Corner(toggle, 10)
+    Corner(toggle, 12)
     Stroke(toggle, Library.Theme.Stroke, 1)
 
     local knob = New("Frame", {
-        Size = UDim2.fromOffset(13, 13),
-        Position = UDim2.new(0, 3, 0.5, -6),
+        Size = UDim2.fromOffset(16, 16),
+        Position = UDim2.new(0, 3, 0.5, -8),
         BackgroundColor3 = Library.Theme.Muted,
         BorderSizePixel = 0
     }, toggle)
 
-    Corner(knob, 7)
+    Corner(knob, 9)
 
     local state = options.Default == true
 
@@ -632,7 +702,7 @@ function GroupboxMethods:AddToggle(flag, options)
             })
 
             Tween(knob, {
-                Position = UDim2.new(1, -16, 0.5, -6),
+                Position = UDim2.new(1, -19, 0.5, -8),
                 BackgroundColor3 = Library.Theme.White
             })
         else
@@ -641,7 +711,7 @@ function GroupboxMethods:AddToggle(flag, options)
             })
 
             Tween(knob, {
-                Position = UDim2.new(0, 3, 0.5, -6),
+                Position = UDim2.new(0, 3, 0.5, -8),
                 BackgroundColor3 = Library.Theme.Muted
             })
         end
@@ -660,16 +730,17 @@ function GroupboxMethods:AddToggle(flag, options)
     local object = {
         Instance = holder,
         Toggle = toggle,
+
         SetValue = function(_, value)
-            update(value, true)
+            update(value == true, true)
         end,
+
         GetValue = function()
             return state
         end
     }
 
     table.insert(self.Items, object)
-
     return object
 end
 
@@ -681,42 +752,45 @@ function GroupboxMethods:AddSlider(flag, options)
     local default = options.Default or min
     local rounding = options.Rounding or 0
 
+    if max <= min then
+        max = min + 1
+    end
+
     local holder = New("Frame", {
-        Size = UDim2.new(1, 0, 0, 52),
+        Size = UDim2.new(1, 0, 0, 57),
         BackgroundTransparency = 1
     }, self.Container)
 
-    local label = CreateLabel(
+    local label = Label(
         holder,
         options.Text or flag,
         12,
         Library.Theme.Text,
-        FONT
+        FONT_BOLD
     )
 
-    label.Size = UDim2.new(1, -55, 0, 20)
+    label.Size = UDim2.new(1, -60, 0, 21)
 
-    local valueLabel = CreateLabel(
+    local valueLabel = Label(
         holder,
         tostring(default),
         11,
         Library.Theme.SubText,
-        FONT
+        FONT_BOLD
     )
 
-    valueLabel.Size = UDim2.fromOffset(50, 20)
-    valueLabel.Position = UDim2.new(1, -50, 0, 0)
+    valueLabel.Size = UDim2.fromOffset(55, 21)
+    valueLabel.Position = UDim2.new(1, -55, 0, 0)
     valueLabel.TextXAlignment = Enum.TextXAlignment.Right
 
     local bar = New("Frame", {
-        Size = UDim2.new(1, 0, 0, 5),
-        Position = UDim2.new(0, 0, 0, 34),
+        Size = UDim2.new(1, 0, 0, 6),
+        Position = UDim2.new(0, 0, 0, 37),
         BackgroundColor3 = Library.Theme.Element,
         BorderSizePixel = 0
     }, holder)
 
-    Corner(bar, 4)
-    Stroke(bar, Library.Theme.Stroke, 1)
+    Corner(bar, 5)
 
     local fill = New("Frame", {
         Size = UDim2.new(0, 0, 1, 0),
@@ -724,10 +798,19 @@ function GroupboxMethods:AddSlider(flag, options)
         BorderSizePixel = 0
     }, bar)
 
-    Corner(fill, 4)
+    Corner(fill, 5)
 
-    local dragging = false
+    local knob = New("Frame", {
+        Size = UDim2.fromOffset(14, 14),
+        Position = UDim2.new(0, -7, 0.5, -7),
+        BackgroundColor3 = Library.Theme.White,
+        BorderSizePixel = 0
+    }, bar)
+
+    Corner(knob, 8)
+
     local value = default
+    local dragging = false
 
     local function set(valueInput, fire)
         value = math.clamp(valueInput, min, max)
@@ -738,10 +821,14 @@ function GroupboxMethods:AddSlider(flag, options)
             value = math.floor(value + 0.5)
         end
 
+        value = math.clamp(value, min, max)
+
         local percent = (value - min) / (max - min)
 
         fill.Size = UDim2.new(percent, 0, 1, 0)
+        knob.Position = UDim2.new(percent, -7, 0.5, -7)
         valueLabel.Text = tostring(value)
+
         SetFlag(flag, value)
 
         if fire and options.Callback then
@@ -750,8 +837,14 @@ function GroupboxMethods:AddSlider(flag, options)
     end
 
     local function fromInput(input)
+        local width = bar.AbsoluteSize.X
+
+        if width <= 0 then
+            return
+        end
+
         local percent = math.clamp(
-            (input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X,
+            (input.Position.X - bar.AbsolutePosition.X) / width,
             0,
             1
         )
@@ -787,16 +880,17 @@ function GroupboxMethods:AddSlider(flag, options)
 
     local object = {
         Instance = holder,
+
         SetValue = function(_, newValue)
             set(newValue, true)
         end,
+
         GetValue = function()
             return value
         end
     }
 
     table.insert(self.Items, object)
-
     return object
 end
 
@@ -807,126 +901,142 @@ function GroupboxMethods:AddDropdown(flag, options)
     local current = options.Default or values[1]
 
     local holder = New("Frame", {
-        Size = UDim2.new(1, 0, 0, 52),
+        Size = UDim2.new(1, 0, 0, 57),
         BackgroundTransparency = 1
     }, self.Container)
 
-    local label = CreateLabel(
+    local label = Label(
         holder,
         options.Text or flag,
         12,
         Library.Theme.Text,
-        FONT
+        FONT_BOLD
     )
 
-    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Size = UDim2.new(1, 0, 0, 21)
 
     local dropdown = New("TextButton", {
-        Size = UDim2.new(1, 0, 0, 28),
-        Position = UDim2.new(0, 0, 0, 23),
+        Size = UDim2.new(1, 0, 0, 31),
+        Position = UDim2.new(0, 0, 0, 25),
         BackgroundColor3 = Library.Theme.Element,
         BorderSizePixel = 0,
         Text = "",
-        AutoButtonColor = false
+        AutoButtonColor = false,
+        ZIndex = 5
     }, holder)
 
-    Corner(dropdown, 7)
+    Corner(dropdown, 8)
     Stroke(dropdown, Library.Theme.Stroke, 1)
 
-    local selected = CreateLabel(
+    local selected = Label(
         dropdown,
         tostring(current or ""),
         11,
         Library.Theme.SubText,
-        FONT
+        FONT_BOLD
     )
 
-    selected.Position = UDim2.new(0, 9, 0, 0)
-    selected.Size = UDim2.new(1, -28, 1, 0)
+    selected.Position = UDim2.new(0, 11, 0, 0)
+    selected.Size = UDim2.new(1, -38, 1, 0)
 
-    local arrow = CreateLabel(
+    local arrow = Label(
         dropdown,
         "⌄",
-        13,
+        14,
         Library.Theme.Muted,
         FONT_BOLD
     )
 
-    arrow.Position = UDim2.new(1, -22, 0, 0)
-    arrow.Size = UDim2.fromOffset(18, 28)
+    arrow.Position = UDim2.new(1, -27, 0, 0)
+    arrow.Size = UDim2.fromOffset(20, 31)
     arrow.TextXAlignment = Enum.TextXAlignment.Center
 
     local list = New("Frame", {
         Size = UDim2.new(1, 0, 0, 0),
-        Position = UDim2.new(0, 0, 1, 5),
-        BackgroundColor3 = Library.Theme.Surface,
+        Position = UDim2.new(0, 0, 1, 6),
+        BackgroundColor3 = Library.Theme.Surface2,
         BorderSizePixel = 0,
         Visible = false,
-        ZIndex = 20
+        ZIndex = 50
     }, dropdown)
 
-    Corner(list, 7)
+    Corner(list, 8)
     Stroke(list, Library.Theme.Stroke, 1)
+    Padding(list, 5, 5, 5, 5)
 
     local listLayout = New("UIListLayout", {
-        Padding = UDim.new(0, 2),
+        Padding = UDim.new(0, 3),
         SortOrder = Enum.SortOrder.LayoutOrder
     }, list)
 
-    Padding(list, 5, 5, 5, 5)
-
     local open = false
 
-    for _, item in ipairs(values) do
-        local option = New("TextButton", {
-            Size = UDim2.new(1, 0, 0, 27),
-            BackgroundColor3 = Library.Theme.Surface,
-            BorderSizePixel = 0,
-            Text = tostring(item),
-            TextColor3 = Library.Theme.SubText,
-            TextSize = 11,
-            Font = FONT,
-            AutoButtonColor = false,
-            ZIndex = 21
-        }, list)
-
-        Corner(option, 5)
-
-        option.MouseEnter:Connect(function()
-            Tween(option, {
-                BackgroundColor3 = Library.Theme.Element,
-                TextColor3 = Library.Theme.Text
-            })
-        end)
-
-        option.MouseLeave:Connect(function()
-            Tween(option, {
-                BackgroundColor3 = Library.Theme.Surface,
-                TextColor3 = Library.Theme.SubText
-            })
-        end)
-
-        option.MouseButton1Click:Connect(function()
-            current = item
-            selected.Text = tostring(item)
-            SetFlag(flag, current)
-
-            if options.Callback then
-                options.Callback(current)
+    local function rebuild()
+        for _, child in ipairs(list:GetChildren()) do
+            if child:IsA("TextButton") then
+                child:Destroy()
             end
+        end
 
-            open = false
-            list.Visible = false
-        end)
+        for _, item in ipairs(values) do
+            local option = New("TextButton", {
+                Size = UDim2.new(1, 0, 0, 29),
+                BackgroundColor3 = Library.Theme.Surface2,
+                BorderSizePixel = 0,
+                Text = tostring(item),
+                TextColor3 = Library.Theme.SubText,
+                TextSize = 11,
+                Font = FONT_BOLD,
+                AutoButtonColor = false,
+                ZIndex = 51
+            }, list)
+
+            Corner(option, 6)
+
+            option.MouseEnter:Connect(function()
+                Tween(option, {
+                    BackgroundColor3 = Library.Theme.ElementHover,
+                    TextColor3 = Library.Theme.Text
+                })
+            end)
+
+            option.MouseLeave:Connect(function()
+                Tween(option, {
+                    BackgroundColor3 = Library.Theme.Surface2,
+                    TextColor3 = Library.Theme.SubText
+                })
+            end)
+
+            option.MouseButton1Click:Connect(function()
+                current = item
+                selected.Text = tostring(item)
+                SetFlag(flag, current)
+
+                if options.Callback then
+                    options.Callback(current)
+                end
+
+                open = false
+                list.Visible = false
+                Tween(arrow, {Rotation = 0})
+            end)
+        end
     end
+
+    rebuild()
 
     local function toggle()
         open = not open
         list.Visible = open
 
         if open then
-            local count = #values
-            list.Size = UDim2.new(1, 0, 0, math.min(count * 29 + 10, 150))
+            list.Size = UDim2.new(
+                1,
+                0,
+                0,
+                math.min(#values * 32 + 10, 170)
+            )
+
             Tween(arrow, {Rotation = 180})
         else
             Tween(arrow, {Rotation = 0})
@@ -939,6 +1049,7 @@ function GroupboxMethods:AddDropdown(flag, options)
 
     local object = {
         Instance = holder,
+
         SetValue = function(_, value)
             for _, item in ipairs(values) do
                 if item == value then
@@ -954,16 +1065,24 @@ function GroupboxMethods:AddDropdown(flag, options)
                 end
             end
         end,
+
         GetValue = function()
             return current
         end,
+
         Refresh = function(_, newValues)
-            values = newValues
+            values = newValues or {}
+            rebuild()
+
+            if not table.find(values, current) then
+                current = values[1]
+                selected.Text = tostring(current or "")
+                SetFlag(flag, current)
+            end
         end
     }
 
     table.insert(self.Items, object)
-
     return object
 end
 
@@ -971,23 +1090,23 @@ function GroupboxMethods:AddInput(flag, options)
     options = options or {}
 
     local holder = New("Frame", {
-        Size = UDim2.new(1, 0, 0, 52),
+        Size = UDim2.new(1, 0, 0, 57),
         BackgroundTransparency = 1
     }, self.Container)
 
-    local label = CreateLabel(
+    local label = Label(
         holder,
         options.Text or flag,
         12,
         Library.Theme.Text,
-        FONT
+        FONT_BOLD
     )
 
-    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Size = UDim2.new(1, 0, 0, 21)
 
     local input = New("TextBox", {
-        Size = UDim2.new(1, 0, 0, 28),
-        Position = UDim2.new(0, 0, 0, 23),
+        Size = UDim2.new(1, 0, 0, 31),
+        Position = UDim2.new(0, 0, 0, 25),
         BackgroundColor3 = Library.Theme.Element,
         BorderSizePixel = 0,
         Text = options.Default or "",
@@ -995,16 +1114,27 @@ function GroupboxMethods:AddInput(flag, options)
         PlaceholderColor3 = Library.Theme.Muted,
         TextColor3 = Library.Theme.Text,
         TextSize = 11,
-        Font = FONT,
+        Font = FONT_BOLD,
         ClearTextOnFocus = false,
-        TextXAlignment = Enum.TextXAlignment.Left
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextTruncate = Enum.TextTruncate.AtEnd
     }, holder)
 
-    Corner(input, 7)
+    Corner(input, 8)
     Stroke(input, Library.Theme.Stroke, 1)
-    Padding(input, 9, 0, 9, 0)
+    Padding(input, 11, 0, 11, 0)
+
+    input.Focused:Connect(function()
+        Tween(input, {
+            BackgroundColor3 = Library.Theme.ElementHover
+        })
+    end)
 
     input.FocusLost:Connect(function()
+        Tween(input, {
+            BackgroundColor3 = Library.Theme.Element
+        })
+
         SetFlag(flag, input.Text)
 
         if options.Callback then
@@ -1016,31 +1146,36 @@ function GroupboxMethods:AddInput(flag, options)
 
     local object = {
         Instance = holder,
+
         SetValue = function(_, value)
             input.Text = tostring(value)
             SetFlag(flag, value)
         end,
+
         GetValue = function()
             return input.Text
         end
     }
 
     table.insert(self.Items, object)
-
     return object
 end
 
 function GroupboxMethods:AddParagraph(title, text)
+    text = tostring(text or "")
+
     local holder = New("Frame", {
-        Size = UDim2.new(1, 0, 0, 58),
+        Size = UDim2.new(1, 0, 0, 0),
         BackgroundColor3 = Library.Theme.Element,
-        BorderSizePixel = 0
+        BorderSizePixel = 0,
+        AutomaticSize = Enum.AutomaticSize.Y
     }, self.Container)
 
-    Corner(holder, 7)
-    Stroke(holder, Library.Theme.Stroke, 1)
+    Corner(holder, 9)
+    Stroke(holder, Library.Theme.StrokeSoft, 1)
+    Padding(holder, 11, 9, 11, 10)
 
-    local titleLabel = CreateLabel(
+    local titleLabel = Label(
         holder,
         title,
         11,
@@ -1048,10 +1183,9 @@ function GroupboxMethods:AddParagraph(title, text)
         FONT_BOLD
     )
 
-    titleLabel.Position = UDim2.new(0, 9, 0, 5)
-    titleLabel.Size = UDim2.new(1, -18, 0, 18)
+    titleLabel.Size = UDim2.new(1, 0, 0, 18)
 
-    local body = CreateLabel(
+    local body = Label(
         holder,
         text,
         10,
@@ -1059,47 +1193,61 @@ function GroupboxMethods:AddParagraph(title, text)
         FONT
     )
 
-    body.Position = UDim2.new(0, 9, 0, 24)
-    body.Size = UDim2.new(1, -18, 0, 28)
+    body.Position = UDim2.new(0, 0, 0, 23)
+    body.Size = UDim2.new(1, 0, 0, 0)
+    body.AutomaticSize = Enum.AutomaticSize.Y
     body.TextWrapped = true
     body.TextYAlignment = Enum.TextYAlignment.Top
 
     table.insert(self.Items, holder)
-
     return holder
 end
 
 function GroupboxMethods:AddColorPicker(flag, options)
     options = options or {}
 
-    local color = options.Default or Color3.fromRGB(125, 105, 255)
+    local color = options.Default or Library.Theme.Accent
 
     local holder = New("Frame", {
-        Size = UDim2.new(1, 0, 0, 34),
+        Size = UDim2.new(1, 0, 0, 36),
         BackgroundTransparency = 1
     }, self.Container)
 
-    local label = CreateLabel(
+    local label = Label(
         holder,
         options.Text or flag,
         12,
         Library.Theme.Text,
-        FONT
+        FONT_BOLD
     )
 
-    label.Size = UDim2.new(1, -42, 1, 0)
+    label.Size = UDim2.new(1, -48, 1, 0)
 
     local picker = New("TextButton", {
-        Size = UDim2.fromOffset(30, 20),
-        Position = UDim2.new(1, -30, 0.5, -10),
+        Size = UDim2.fromOffset(34, 22),
+        Position = UDim2.new(1, -34, 0.5, -11),
         BackgroundColor3 = color,
         BorderSizePixel = 0,
         Text = "",
         AutoButtonColor = false
     }, holder)
 
-    Corner(picker, 6)
+    Corner(picker, 7)
     Stroke(picker, Library.Theme.Stroke, 1)
+
+    picker.MouseEnter:Connect(function()
+        Tween(picker, {
+            Size = UDim2.fromOffset(37, 24),
+            Position = UDim2.new(1, -37, 0.5, -12)
+        })
+    end)
+
+    picker.MouseLeave:Connect(function()
+        Tween(picker, {
+            Size = UDim2.fromOffset(34, 22),
+            Position = UDim2.new(1, -34, 0.5, -11)
+        })
+    end)
 
     picker.MouseButton1Click:Connect(function()
         if options.Callback then
@@ -1111,6 +1259,7 @@ function GroupboxMethods:AddColorPicker(flag, options)
 
     local object = {
         Instance = holder,
+
         SetValue = function(_, value)
             color = value
             picker.BackgroundColor3 = value
@@ -1120,13 +1269,13 @@ function GroupboxMethods:AddColorPicker(flag, options)
                 options.Callback(value)
             end
         end,
+
         GetValue = function()
             return color
         end
     }
 
     table.insert(self.Items, object)
-
     return object
 end
 
@@ -1145,16 +1294,25 @@ function Library:Notify(options)
     end
 
     local holder = New("Frame", {
-        Size = UDim2.fromOffset(280, 70),
-        Position = UDim2.new(1, -300, 1, -90),
+        Size = UDim2.fromOffset(320, 78),
+        Position = UDim2.new(1, 25, 1, -100),
         BackgroundColor3 = Library.Theme.Surface,
         BorderSizePixel = 0
     }, gui)
 
-    Corner(holder, 9)
+    Corner(holder, 11)
     Stroke(holder, Library.Theme.Stroke, 1)
 
-    local title = CreateLabel(
+    local accent = New("Frame", {
+        Size = UDim2.fromOffset(3, 46),
+        Position = UDim2.new(0, 0, 0.5, -23),
+        BackgroundColor3 = Library.Theme.Accent,
+        BorderSizePixel = 0
+    }, holder)
+
+    Corner(accent, 2)
+
+    local title = Label(
         holder,
         options.Title or "Notification",
         12,
@@ -1162,10 +1320,10 @@ function Library:Notify(options)
         FONT_BOLD
     )
 
-    title.Position = UDim2.new(0, 12, 0, 9)
-    title.Size = UDim2.new(1, -24, 0, 20)
+    title.Position = UDim2.new(0, 15, 0, 10)
+    title.Size = UDim2.new(1, -30, 0, 20)
 
-    local text = CreateLabel(
+    local text = Label(
         holder,
         options.Description or "",
         10,
@@ -1173,25 +1331,24 @@ function Library:Notify(options)
         FONT
     )
 
-    text.Position = UDim2.new(0, 12, 0, 29)
-    text.Size = UDim2.new(1, -24, 0, 32)
+    text.Position = UDim2.new(0, 15, 0, 32)
+    text.Size = UDim2.new(1, -30, 0, 34)
     text.TextWrapped = true
-
-    holder.Position = UDim2.new(1, 20, 1, -90)
+    text.TextYAlignment = Enum.TextYAlignment.Top
 
     Tween(holder, {
-        Position = UDim2.new(1, -300, 1, -90)
+        Position = UDim2.new(1, -345, 1, -100)
     })
 
     task.delay(options.Duration or 4, function()
         if holder and holder.Parent then
             Tween(holder, {
-                Position = UDim2.new(1, 20, 1, -90)
-            })
+                Position = UDim2.new(1, 25, 1, -100)
+            }, 0.2)
 
-            task.wait(0.2)
+            task.wait(0.25)
 
-            if holder then
+            if holder and holder.Parent then
                 holder:Destroy()
             end
         end
