@@ -676,6 +676,7 @@ function ThemeManager:Init(Library, Folder)
     if Library then
         self:SetLibrary(Library)
 
+        -- MoonHub her zaman başlangıç teması olsun.
         self.CurrentTheme = "MoonHub"
 
         local MoonHubTheme = self.Themes.MoonHub
