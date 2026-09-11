@@ -101,16 +101,26 @@ end
 --// Register code that must be cleaned up when the library is unloaded.
 function Library:OnUnload(Callback)
     if type(Callback) ~= "function" then
-        return Callback
+        return nil
     end
 
     if self.Unloaded then
-        pcall(Callback)
+        task.spawn(function()
+            pcall(Callback)
+        end)
         return Callback
     end
 
     table.insert(self._UnloadCallbacks, Callback)
     return Callback
+end
+
+function Library:UnOnload(Callback)
+    return self:OnUnload(Callback)
+end
+
+function Library:RegisterUnloadCallback(Callback)
+    return self:OnUnload(Callback)
 end
 
 --// Show / hide the main MoonHub GUI without destroying it.
@@ -2581,21 +2591,22 @@ function Library:SetAccent(Color)
 end
 
 function Library:Unload()
-    if Library.Unloaded then
-        return
+    if self.Unloaded then
+        return false
     end
 
-    Library.Unloaded = true
+    local Callbacks = table.clone(self._UnloadCallbacks)
+    table.clear(self._UnloadCallbacks)
 
-    -- User/module cleanup runs first so scripts can safely disable
-    -- states, disconnect their own connections and restore changes.
-    for _, Callback in ipairs(Library._UnloadCallbacks) do
-        pcall(Callback)
+    for _, Callback in ipairs(Callbacks) do
+        task.spawn(function()
+            pcall(Callback)
+        end)
     end
-    table.clear(Library._UnloadCallbacks)
 
-    -- Destroy every MoonHub window.
-    for _, Window in ipairs(Library.Windows) do
+    self.Unloaded = true
+
+    for _, Window in ipairs(self.Windows) do
         if Window and not Window.Unloaded then
             pcall(function()
                 Window:Unload()
@@ -2603,7 +2614,6 @@ function Library:Unload()
         end
     end
 
-    -- Destroy notification UI as well.
     if NotificationGui then
         pcall(function()
             NotificationGui:Destroy()
@@ -2612,8 +2622,9 @@ function Library:Unload()
         NotificationList = nil
     end
 
-    -- Extra safety: destroy any remaining window ScreenGui.
-    for _, Window in ipairs(Library.Windows) do
+    table.clear(Notifications)
+
+    for _, Window in ipairs(self.Windows) do
         if Window and Window.Gui then
             pcall(function()
                 Window.Gui:Destroy()
@@ -2621,13 +2632,16 @@ function Library:Unload()
         end
     end
 
-    table.clear(Library.Toggles)
-    table.clear(Library.Options)
-    table.clear(Library.Labels)
-    table.clear(Library.Buttons)
-    table.clear(Library.KeyPickers)
-    table.clear(Library.Windows)
-    Library.CurrentWindow = nil
+    table.clear(self.Toggles)
+    table.clear(self.Options)
+    table.clear(self.Labels)
+    table.clear(self.Buttons)
+    table.clear(self.KeyPickers)
+    table.clear(self.Windows)
+    table.clear(self._ThemeCallbacks)
+    self.CurrentWindow = nil
+
+    return true
 end
 
 
