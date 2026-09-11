@@ -343,9 +343,6 @@ function ThemeManager:ApplyTheme(Name)
     self.CurrentTheme = Name
     if self.Library.RefreshTheme then
         self.Library:RefreshTheme()
-        task.defer(function()
-            if self.Library and self.Library.RefreshTheme then self.Library:RefreshTheme() end
-        end)
     end
     return true
 end
@@ -488,9 +485,6 @@ function ThemeManager:Load(Name)
     self.CurrentTheme = Name
     if self.Library.RefreshTheme then
         self.Library:RefreshTheme()
-        task.defer(function()
-            if self.Library and self.Library.RefreshTheme then self.Library:RefreshTheme() end
-        end)
     end
 
     if self.Library.Notify then
@@ -596,7 +590,17 @@ function ThemeManager:AllThemes()
         end
     end
 
-    table.sort(Themes)
+    -- MoonHub her zaman listenin ilk teması olsun.
+    -- Kalan temalar alfabetik sıralanır.
+    table.sort(Themes, function(A, B)
+        if A == self.StartupTheme then
+            return true
+        end
+        if B == self.StartupTheme then
+            return false
+        end
+        return A < B
+    end)
 
     return Themes
 end
@@ -611,13 +615,21 @@ function ThemeManager:BuildThemeSection(Tab)
     local ThemeNames = self:AllThemes()
 
     if #ThemeNames == 0 then
-        ThemeNames = {"MoonHub"}
+        ThemeNames = { self.StartupTheme }
+    end
+
+    local DefaultTheme = 1
+    for Index, Name in ipairs(ThemeNames) do
+        if Name == self.CurrentTheme then
+            DefaultTheme = Index
+            break
+        end
     end
 
     Groupbox:AddDropdown("ThemeSelect", {
         Text = "Theme",
         Values = ThemeNames,
-        Default = 1,
+        Default = DefaultTheme,
         Callback = function(Value)
             if Value then
                 self:ApplyTheme(Value)
