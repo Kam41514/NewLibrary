@@ -611,84 +611,174 @@ function ThemeManager:BuildThemeSection(Tab)
     end
 
     local Groupbox = Tab:AddLeftGroupbox("Themes")
-    local ThemeDropdown
+    local ThemeInput
+    local SavedThemesDropdown
+    local RedInput
+    local GreenInput
+    local BlueInput
 
-    local function RefreshThemeDropdown()
-        if ThemeDropdown then
+    ThemeInput = Groupbox:AddInput("ThemeName", {
+        Text = "Theme Name",
+        Default = self.CurrentTheme or self.StartupTheme,
+        Placeholder = "Theme name...",
+        ClearTextOnFocus = false,
+        Callback = function(Value)
+            self.CurrentTheme = tostring(Value or self.StartupTheme)
+        end,
+    })
+
+    local function RefreshSavedThemes()
+        if SavedThemesDropdown then
             pcall(function()
-                ThemeDropdown:Destroy()
+                SavedThemesDropdown:Destroy()
             end)
-            ThemeDropdown = nil
+            SavedThemesDropdown = nil
         end
 
         local ThemeNames = self:AllThemes()
-        if #ThemeNames == 0 then
-            ThemeNames = { self.StartupTheme }
-        end
+        local Current = tostring(self.CurrentTheme or self.StartupTheme)
+        local DefaultIndex = 1
 
-        local DefaultTheme = 1
         for Index, Name in ipairs(ThemeNames) do
-            if Name == self.CurrentTheme then
-                DefaultTheme = Index
+            if Name == Current then
+                DefaultIndex = Index
                 break
             end
         end
 
-        ThemeDropdown = Groupbox:AddDropdown("ThemeSelect", {
-            Text = "Theme",
+        if #ThemeNames == 0 then
+            ThemeNames = { self.StartupTheme }
+            DefaultIndex = 1
+        end
+
+        SavedThemesDropdown = Groupbox:AddDropdown("SavedThemes", {
+            Text = "Saved Themes",
             Values = ThemeNames,
-            Default = DefaultTheme,
+            Default = DefaultIndex,
             Callback = function(Value)
-                if Value then
-                    self:ApplyTheme(Value)
+                if not Value then
+                    return
+                end
+
+                self.CurrentTheme = tostring(Value)
+
+                if ThemeInput and ThemeInput.SetValue then
+                    ThemeInput:SetValue(Value)
                 end
             end,
         })
     end
 
+    RefreshSavedThemes()
+
     Groupbox:AddButton("SaveTheme", {
         Text = "Save Theme",
         Callback = function()
-            self:Save(self.CurrentTheme)
-            RefreshThemeDropdown()
+            local Name = tostring(self.CurrentTheme or self.StartupTheme)
+            self:Save(Name)
+            RefreshSavedThemes()
         end,
     })
 
     Groupbox:AddButton("LoadTheme", {
         Text = "Load Theme",
         Callback = function()
-            self:Load(self.CurrentTheme)
-            RefreshThemeDropdown()
+            local Name = tostring(self.CurrentTheme or self.StartupTheme)
+            self:Load(Name)
+
+            if ThemeInput and ThemeInput.SetValue then
+                ThemeInput:SetValue(Name)
+            end
+
+            RefreshSavedThemes()
         end,
     })
 
     Groupbox:AddButton("DeleteTheme", {
         Text = "Delete Theme",
         Callback = function()
-            if self.CurrentTheme ~= self.StartupTheme then
-                if self:Delete(self.CurrentTheme) then
-                    self.CurrentTheme = self.StartupTheme
+            local Name = tostring(self.CurrentTheme or self.StartupTheme)
 
-                    local MoonHubTheme = self.Themes[self.StartupTheme]
-                    if self.Library and self.Library.SetTheme and MoonHubTheme then
-                        local Copy = {}
-                        for Key, Value in pairs(MoonHubTheme) do
-                            Copy[Key] = Value
-                        end
+            if Name ~= self.StartupTheme and self:Delete(Name) then
+                self.CurrentTheme = self.StartupTheme
+                self:ApplyTheme(self.StartupTheme)
 
-                        self.Library:SetTheme(Copy)
-                        if self.Library.RefreshTheme then
-                            self.Library:RefreshTheme()
-                        end
-                    end
+                if ThemeInput and ThemeInput.SetValue then
+                    ThemeInput:SetValue(self.StartupTheme)
                 end
             end
 
-            RefreshThemeDropdown()
+            RefreshSavedThemes()
         end,
     })
 
-    RefreshThemeDropdown()
+    Groupbox:AddDivider()
+
+    RedInput = Groupbox:AddInput("CustomRed", {
+        Text = "Red",
+        Default = "145",
+        Numeric = true,
+        Finished = false,
+        ClearTextOnFocus = false,
+    })
+
+    GreenInput = Groupbox:AddInput("CustomGreen", {
+        Text = "Green",
+        Default = "92",
+        Numeric = true,
+        Finished = false,
+        ClearTextOnFocus = false,
+    })
+
+    BlueInput = Groupbox:AddInput("CustomBlue", {
+        Text = "Blue",
+        Default = "255",
+        Numeric = true,
+        Finished = false,
+        ClearTextOnFocus = false,
+    })
+
+    Groupbox:AddButton("ApplyCustomColor", {
+        Text = "Apply Custom Color",
+        Callback = function()
+            local R = math.clamp(tonumber(RedInput and RedInput.Value) or 145, 0, 255)
+            local G = math.clamp(tonumber(GreenInput and GreenInput.Value) or 92, 0, 255)
+            local B = math.clamp(tonumber(BlueInput and BlueInput.Value) or 255, 0, 255)
+
+            local Color = Color3.fromRGB(R, G, B)
+            self:SetAccent(Color)
+
+            if self.Library and self.Library.Theme then
+                self.Library.Theme.Accent = Color
+                self.Library.Theme.AccentSoft = Color3.fromRGB(
+                    math.floor(R * 0.75),
+                    math.floor(G * 0.75),
+                    math.floor(B * 0.75)
+                )
+
+                if self.Library.RefreshTheme then
+                    self.Library:RefreshTheme()
+                end
+            end
+
+            if self.Library and self.Library.Notify then
+                self.Library:Notify({
+                    Title = "MoonHub",
+                    Description = string.format("Custom color applied: %d, %d, %d", R, G, B),
+                    Time = 3,
+                })
+            end
+        end,
+    })
+
+    Groupbox:AddButton("SaveCustomTheme", {
+        Text = "Save Custom Theme",
+        Callback = function()
+            local Name = tostring(self.CurrentTheme or "Custom")
+            self:Save(Name)
+            RefreshSavedThemes()
+        end,
+    })
 
     return Groupbox
 end
