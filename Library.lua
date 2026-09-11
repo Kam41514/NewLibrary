@@ -413,6 +413,7 @@ local function CreateToggle(Groupbox, Identifier, Info)
 
     Corner(Container, 5)
     Stroke(Container, Library.Theme.Outline, 0.25, 1)
+    Container:SetAttribute("SearchName", NormalizeName(Key .. " " .. Text))
 
     local Label = New("TextLabel", {
         Name = "Text",
@@ -579,6 +580,7 @@ local function CreateDropdown(Groupbox, Identifier, Info)
 
     Corner(Button, 5)
     Stroke(Button, Library.Theme.Outline, 0.25, 1)
+    Button:SetAttribute("SearchName", NormalizeName(Key .. " " .. Text))
 
     local Label = New("TextLabel", {
         Position = UDim2.new(0, 11, 0, 0),
@@ -597,7 +599,7 @@ local function CreateDropdown(Groupbox, Identifier, Info)
         Position = UDim2.new(1, -26, 0, 0),
         Size = UDim2.new(0, 20, 1, 0),
         BackgroundTransparency = 1,
-        Text = "⌄",
+        Text = "v",
         TextColor3 = Library.Theme.TextDim,
         TextSize = 14,
         Font = Enum.Font.GothamBold,
@@ -651,7 +653,7 @@ local function CreateDropdown(Groupbox, Identifier, Info)
             Size = UDim2.new(1, 0, 0, Height),
         })
 
-        Chevron.Text = Open and "⌃" or "⌄"
+        Chevron.Text = Open and "^" or "v"
     end
 
     local function SetValue(Value)
@@ -785,6 +787,7 @@ local function CreateButton(Groupbox, Identifier, Info)
 
     Corner(Container, 5)
     Stroke(Container, Library.Theme.Outline, 0.25, 1)
+    Container:SetAttribute("SearchName", NormalizeName(Key .. " " .. Text))
 
     local Button = {
         Type = "Button",
@@ -919,6 +922,7 @@ local function CreateInput(Groupbox, Identifier, Info)
 
     Corner(Box, 5)
     Stroke(Box, Library.Theme.Outline, 0.25, 1)
+    Box:SetAttribute("SearchName", NormalizeName(Key .. " " .. Text))
 
     New("UIPadding", {
         PaddingLeft = UDim.new(0, 10),
@@ -961,6 +965,8 @@ local function CreateInput(Groupbox, Identifier, Info)
             Input.Changed(Value)
         end)
     end)
+
+    Library.Labels[Key] = Input
 
     return Input
 end
@@ -1005,6 +1011,8 @@ local function CreateSlider(Groupbox, Identifier, Info)
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent = Holder,
     })
+
+    Holder:SetAttribute("SearchName", NormalizeName(Key .. " " .. Text))
 
     local ValueLabel = New("TextLabel", {
         Position = UDim2.new(0.7, 0, 0, 0),
@@ -1105,6 +1113,12 @@ local function CreateSlider(Groupbox, Identifier, Info)
     function Slider:SetValue(NewValue)
         SetValue(NewValue)
     end
+
+    function Slider:GetValue()
+        return Value
+    end
+
+    Library.Options[Key] = Slider
 
     local function UpdateFromInput(Input)
         local X = Input.Position.X
@@ -1298,6 +1312,8 @@ local function CreateGroupbox(Tab, Name, Side)
     setmetatable(Groupbox, {
         __index = GroupboxMethods
     })
+
+    table.insert(Tab.Groupboxes, Groupbox)
 
     return Groupbox
 end
@@ -1823,7 +1839,7 @@ function Library:CreateWindow(Config)
         Size = UDim2.new(0, 32, 0, 36),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
-        Text = "−",
+        Text = "-",
         TextColor3 =
             Library.Theme.TextDim,
         TextSize = 18,
@@ -1838,7 +1854,7 @@ function Library:CreateWindow(Config)
         Size = UDim2.new(0, 32, 0, 36),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
-        Text = "×",
+        Text = "X",
         TextColor3 =
             Library.Theme.TextDim,
         TextSize = 18,
@@ -1955,17 +1971,94 @@ end
 --// GLOBAL SETTINGS
 --//==================================================
 
+function Library:RefreshTheme()
+    -- Refresh every live UI object using the current theme.
+    for _, Gui in ipairs(PlayerGui:GetChildren()) do
+        if Gui.Name == "MoonHub" or Gui.Name == "MoonHubNotifications" then
+            for _, Object in ipairs(Gui:GetDescendants()) do
+                pcall(function()
+                    if Object.Name == "MainFrame" then
+                        Object.BackgroundColor3 = Library.Theme.Background
+                    elseif Object.Name == "TopBar" then
+                        Object.BackgroundColor3 = Color3.fromRGB(8, 8, 9)
+                    elseif Object.Name == "Explorer" or Object.Name == "Modules" then
+                        Object.BackgroundColor3 = Library.Theme.Sidebar
+                    elseif Object.Name == "Content" then
+                        Object.BackgroundColor3 = Library.Theme.Background
+                    elseif Object.Name == "SearchBox" then
+                        Object.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
+                    elseif Object.Name == "Header" then
+                        Object.TextColor3 = Library.Theme.TextBright
+                    elseif Object.Name == "Text" and Object:IsA("TextLabel") then
+                        Object.TextColor3 = Library.Theme.Text
+                    elseif Object.Name == "Title" and Object:IsA("TextLabel") then
+                        Object.TextColor3 = Library.Theme.TextBright
+                    elseif Object.Name == "Description" and Object:IsA("TextLabel") then
+                        Object.TextColor3 = Library.Theme.TextDim
+                    elseif Object:IsA("TextBox") then
+                        Object.TextColor3 = Library.Theme.Text
+                        Object.PlaceholderColor3 = Library.Theme.Placeholder
+                    elseif Object:IsA("TextButton") then
+                        if Object.Name:find("Module") then
+                            Object.BackgroundColor3 = Library.Theme.Element
+                        else
+                            Object.BackgroundColor3 = Library.Theme.Element
+                            Object.TextColor3 = Library.Theme.Text
+                        end
+                    elseif Object:IsA("Frame") then
+                        if Object.Name == "Progress" or Object.Name == "Accent" then
+                            Object.BackgroundColor3 = Library.Theme.Accent
+                        elseif Object.Name == "Fill" then
+                            Object.BackgroundColor3 = Library.Theme.Accent
+                        elseif Object.Name == "Switch" then
+                            -- Toggle state is restored below.
+                        elseif Object.Name == "Knob" then
+                            -- Toggle state is restored below.
+                        end
+                    end
+                end)
+            end
+        end
+    end
+
+    for _, Toggle in pairs(Library.Toggles) do
+        pcall(function()
+            local switch = Toggle.Container:FindFirstChild("Switch")
+            local knob = switch and switch:FindFirstChild("Knob")
+            local label = Toggle.Container:FindFirstChild("Text")
+
+            if switch then
+                switch.BackgroundColor3 = Toggle.Value and Library.Theme.ToggleOn or Library.Theme.ToggleOff
+            end
+
+            if knob then
+                knob.BackgroundColor3 = Toggle.Value and Library.Theme.TextBright or Library.Theme.KnobOff
+                knob.Position = Toggle.Value
+                    and UDim2.new(1, -14, 0.5, -6)
+                    or UDim2.new(0, 2, 0.5, -6)
+            end
+
+            if label then
+                label.TextColor3 = Toggle.Value and Library.Theme.TextBright or Library.Theme.Text
+            end
+        end)
+    end
+end
+
 function Library:SetTheme(Theme)
     for Key, Value in pairs(Theme or {}) do
         if Library.Theme[Key] ~= nil then
             Library.Theme[Key] = Value
         end
     end
+
+    self:RefreshTheme()
 end
 
 function Library:SetAccent(Color)
     if typeof(Color) == "Color3" then
         Library.Theme.Accent = Color
+        self:RefreshTheme()
     end
 end
 
@@ -1985,79 +2078,24 @@ function Library:Unload()
     if NotificationGui then
         NotificationGui:Destroy()
         NotificationGui = nil
+        NotificationList = nil
     end
+
+    for _, Window in ipairs(Library.Windows) do
+        if Window and Window.Gui then
+            pcall(function()
+                Window.Gui:Destroy()
+            end)
+        end
+    end
+
+    table.clear(Library.Toggles)
+    table.clear(Library.Options)
+    table.clear(Library.Labels)
+    table.clear(Library.Buttons)
+    table.clear(Library.Windows)
+    Library.CurrentWindow = nil
 end
 
---//==================================================
---// DEFAULT TEST WINDOW
---//==================================================
--- Remove this section when using Library.lua as a pure API file.
--- It is disabled by default.
-
-Library.AutoTest = false
-
-if Library.AutoTest then
-    local Window = Library:CreateWindow({
-        Title = "Moon Hub",
-        Footer = "MoonHub"
-    })
-
-    local Tabs = {
-        Test = Window:AddTab("Test"),
-        Test2 = Window:AddTab("Test 2"),
-    }
-
-    local Left = Tabs.Test:AddLeftGroupbox("Movement")
-    local Right = Tabs.Test:AddRightGroupbox("Settings")
-
-    Left:AddDropdown("Mode", {
-        Text = "Mode",
-        Values = {
-            "Default",
-            "Performance",
-            "Balanced",
-            "Extreme",
-        },
-        Default = 1,
-    })
-
-    Left:AddToggle("Speed", {
-        Text = "Speed",
-        Default = false,
-        Callback = function(Value)
-            print("Speed:", Value)
-        end,
-    })
-
-    Left:AddToggle("Fly", {
-        Text = "Fly",
-        Default = false,
-        Callback = function(Value)
-            print("Fly:", Value)
-        end,
-    })
-
-    Right:AddToggle("EnableFeature", {
-        Text = "Enable Feature",
-        Default = false,
-    })
-
-    local Test2Left =
-        Tabs.Test2:AddLeftGroupbox("General")
-
-    Test2Left:AddToggle("TestToggle", {
-        Text = "Test Toggle",
-    })
-
-    Test2Left:AddToggle("FlySpeed", {
-        Text = "Fly Speed",
-    })
-
-    Library:Notify({
-        Title = "MoonHub",
-        Description = "Library loaded.",
-        Time = 5,
-    })
-end
 
 return Library
