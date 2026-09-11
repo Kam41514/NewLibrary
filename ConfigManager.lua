@@ -718,13 +718,6 @@ function ConfigManager:BuildConfigSection(Tab)
     )
 
     local function RefreshSavedConfigs()
-        if SavedConfigsDropdown then
-            pcall(function()
-                SavedConfigsDropdown:Destroy()
-            end)
-            SavedConfigsDropdown = nil
-        end
-
         local ConfigNames = self:AllConfigs()
         local DefaultIndex = 1
         local Current = tostring(self.CurrentConfig or "Default")
@@ -739,6 +732,19 @@ function ConfigManager:BuildConfigSection(Tab)
         if #ConfigNames == 0 then
             ConfigNames = { "No saved configs" }
             DefaultIndex = 1
+        end
+
+        if SavedConfigsDropdown then
+            -- Library'nin yeni SetValues API'si dropdown'u silip yeniden
+            -- oluşturmadan sadece seçenekleri günceller. Böylece groupbox
+            -- içindeki konumu değişmez.
+            if SavedConfigsDropdown.SetValues then
+                SavedConfigsDropdown:SetValues(
+                    ConfigNames,
+                    DefaultIndex
+                )
+            end
+            return
         end
 
         SavedConfigsDropdown = Groupbox:AddDropdown(
