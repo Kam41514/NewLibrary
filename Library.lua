@@ -601,21 +601,42 @@ local function CreateDropdown(Groupbox, Identifier, Info)
         Parent = Button,
     })
 
-    local Chevron = New("TextLabel", {
-        Position = UDim2.new(1, -26, 0, 0),
-        Size = UDim2.new(0, 20, 1, 0),
+    --// Thin dropdown chevron (no TextLabel / no bold glyph)
+    local Chevron = New("Frame", {
+        Name = "DropdownChevron",
+        Position = UDim2.new(1, -18, 0.5, -5),
+        Size = UDim2.new(0, 9, 0, 9),
         BackgroundTransparency = 1,
-        Text = "v",
-        TextColor3 = Library.Theme.TextDim,
-        TextSize = 14,
-        Font = Enum.Font.GothamBold,
+        BorderSizePixel = 0,
         Parent = Button,
+    })
+
+    local ChevronLeft = New("Frame", {
+        Name = "ChevronLeft",
+        Size = UDim2.new(0, 6, 0, 1.25),
+        Position = UDim2.new(0, 0, 0, 3),
+        AnchorPoint = Vector2.new(0, 0.5),
+        Rotation = 45,
+        BackgroundColor3 = Library.Theme.TextDim,
+        BorderSizePixel = 0,
+        Parent = Chevron,
+    })
+
+    local ChevronRight = New("Frame", {
+        Name = "ChevronRight",
+        Size = UDim2.new(0, 6, 0, 1.25),
+        Position = UDim2.new(0, 4, 0, 3),
+        AnchorPoint = Vector2.new(0, 0.5),
+        Rotation = -45,
+        BackgroundColor3 = Library.Theme.TextDim,
+        BorderSizePixel = 0,
+        Parent = Chevron,
     })
 
     local OptionsFrame = New("Frame", {
         Position = UDim2.new(0, 0, 0, 40),
         Size = UDim2.new(1, 0, 0, math.max(1, #Values) * 30 + 6),
-        BackgroundColor3 = Color3.fromRGB(11, 11, 14),
+        BackgroundColor3 = Library.Theme.Panel,
         BorderSizePixel = 0,
         Parent = Container,
     })
@@ -659,7 +680,8 @@ local function CreateDropdown(Groupbox, Identifier, Info)
             Size = UDim2.new(1, 0, 0, Height),
         })
 
-        Chevron.Text = Open and "^" or "v"
+        ChevronLeft.Rotation = Open and 135 or 45
+        ChevronRight.Rotation = Open and -135 or -45
     end
 
     local function SetValue(Value)
@@ -696,7 +718,7 @@ local function CreateDropdown(Groupbox, Identifier, Info)
         local Option = New("TextButton", {
             Name = "Option_" .. tostring(Index),
             Size = UDim2.new(1, -8, 0, 30),
-            BackgroundColor3 = Color3.fromRGB(11, 11, 14),
+            BackgroundColor3 = Library.Theme.Panel,
             BorderSizePixel = 0,
             AutoButtonColor = false,
             Text = tostring(Value),
@@ -723,7 +745,7 @@ local function CreateDropdown(Groupbox, Identifier, Info)
 
         Option.MouseLeave:Connect(function()
             Tween(Option, 0.1, {
-                BackgroundColor3 = Color3.fromRGB(11, 11, 14),
+                BackgroundColor3 = Library.Theme.Panel,
                 TextColor3 = Library.Theme.Text,
             })
         end)
@@ -1421,7 +1443,7 @@ function WindowMethods:AddTab(Name)
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         ScrollBarThickness = 2,
-        ScrollBarImageColor3 = Color3.fromRGB(65, 65, 70),
+        ScrollBarImageColor3 = Library.Theme.Outline,
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
         CanvasSize = UDim2.new(),
         Parent = Columns,
@@ -1434,7 +1456,7 @@ function WindowMethods:AddTab(Name)
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         ScrollBarThickness = 2,
-        ScrollBarImageColor3 = Color3.fromRGB(65, 65, 70),
+        ScrollBarImageColor3 = Library.Theme.Outline,
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
         CanvasSize = UDim2.new(),
         Parent = Columns,
@@ -1685,7 +1707,7 @@ function Library:CreateWindow(Config)
         Name = "TopBar",
         Size = UDim2.new(1, 0, 0, 36),
         BackgroundColor3 =
-            Color3.fromRGB(8, 8, 9),
+            Library.Theme.Panel,
         BorderSizePixel = 0,
         Parent = Frame,
     })
@@ -1728,7 +1750,7 @@ function Library:CreateWindow(Config)
         Position = UDim2.new(0, 6, 0, 4),
         Size = UDim2.new(1, -12, 1, -8),
         BackgroundColor3 =
-            Color3.fromRGB(18, 18, 21),
+            Library.Theme.Element,
         BorderSizePixel = 0,
         Parent = SearchArea,
     })
@@ -1741,10 +1763,47 @@ function Library:CreateWindow(Config)
         1
     )
 
+    --// Search icon (thin magnifier, like the old MoonHub UI)
+    local SearchIcon = Instance.new("Frame")
+    SearchIcon.Name = "SearchIcon"
+    SearchIcon.Size = UDim2.new(0, 15, 0, 15)
+    SearchIcon.Position = UDim2.new(0, 8, 0.5, -8)
+    SearchIcon.BackgroundTransparency = 1
+    SearchIcon.BorderSizePixel = 0
+    SearchIcon.Parent = SearchBox
+
+    local SearchCircle = Instance.new("Frame")
+    SearchCircle.Name = "SearchCircle"
+    SearchCircle.Size = UDim2.new(0, 8, 0, 8)
+    SearchCircle.Position = UDim2.new(0, 1, 0, 1)
+    SearchCircle.BackgroundTransparency = 1
+    SearchCircle.BorderSizePixel = 0
+    SearchCircle.Parent = SearchIcon
+
+    local CircleCorner = Instance.new("UICorner")
+    CircleCorner.CornerRadius = UDim.new(1, 0)
+    CircleCorner.Parent = SearchCircle
+
+    local CircleStroke = Instance.new("UIStroke")
+    CircleStroke.Name = "CircleStroke"
+    CircleStroke.Thickness = 1.5
+    CircleStroke.Color = Library.Theme.TextDim
+    CircleStroke.Parent = SearchCircle
+
+    local SearchHandle = Instance.new("Frame")
+    SearchHandle.Name = "SearchHandle"
+    SearchHandle.Size = UDim2.new(0, 6, 0, 1.5)
+    SearchHandle.Position = UDim2.new(0, 8, 0, 10)
+    SearchHandle.AnchorPoint = Vector2.new(0, 0.5)
+    SearchHandle.Rotation = 45
+    SearchHandle.BackgroundColor3 = Library.Theme.TextDim
+    SearchHandle.BorderSizePixel = 0
+    SearchHandle.Parent = SearchIcon
+
     local SearchInput = New("TextBox", {
         Name = "SearchInput",
-        Position = UDim2.new(0, 10, 0, 0),
-        Size = UDim2.new(1, -18, 1, 0),
+        Position = UDim2.new(0, 31, 0, 0),
+        Size = UDim2.new(1, -34, 1, 0),
         BackgroundTransparency = 1,
         ClearTextOnFocus = false,
         PlaceholderText = "Search",
@@ -1777,7 +1836,7 @@ function Library:CreateWindow(Config)
         BorderSizePixel = 0,
         ScrollBarThickness = 2,
         ScrollBarImageColor3 =
-            Color3.fromRGB(65, 65, 70),
+            Library.Theme.Outline,
         AutomaticCanvasSize =
             Enum.AutomaticSize.Y,
         CanvasSize = UDim2.new(),
@@ -1845,7 +1904,7 @@ function Library:CreateWindow(Config)
         Size = UDim2.new(0, 32, 0, 36),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
-        Text = "-",
+        Text = "−",
         TextColor3 =
             Library.Theme.TextDim,
         TextSize = 18,
@@ -1860,7 +1919,7 @@ function Library:CreateWindow(Config)
         Size = UDim2.new(0, 32, 0, 36),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
-        Text = "X",
+        Text = "×",
         TextColor3 =
             Library.Theme.TextDim,
         TextSize = 18,
@@ -1993,6 +2052,12 @@ function Library:RefreshTheme()
                         Object.BackgroundColor3 = Library.Theme.Background
                     elseif Object.Name == "SearchBox" then
                         Object.BackgroundColor3 = Library.Theme.Element
+                    elseif Object.Name == "SearchHandle" then
+                        Object.BackgroundColor3 = Library.Theme.TextDim
+                    elseif Object.Name == "CircleStroke" then
+                        Object.Color = Library.Theme.TextDim
+                    elseif Object.Name == "ChevronLeft" or Object.Name == "ChevronRight" then
+                        Object.BackgroundColor3 = Library.Theme.TextDim
                     elseif Object.Name == "Header" then
                         Object.TextColor3 = Library.Theme.TextBright
                     elseif Object.Name == "Text" and Object:IsA("TextLabel") then
