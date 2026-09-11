@@ -663,6 +663,14 @@ function ThemeManager:BuildThemeSection(Tab)
     return Groupbox
 end
 
+function ThemeManager:ApplyToTab(Tab)
+    if not Tab then
+        return nil
+    end
+
+    return self:BuildThemeSection(Tab)
+end
+
 function ThemeManager:Init(Library, Folder)
     if Library then
         self:SetLibrary(Library)
