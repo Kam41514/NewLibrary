@@ -1726,6 +1726,8 @@ local function CreateGroupbox(Tab, Name, Side)
         Parent = Column,
     })
 
+    Box:SetAttribute("MoonHubGroupbox", true)
+
     Corner(Box, 7)
     Stroke(Box, Library.Theme.OutlineSoft, 0.22, 1)
 
@@ -2471,7 +2473,14 @@ function Library:RefreshTheme()
         if Gui.Name == "MoonHub" or Gui.Name == "MoonHubNotifications" then
             for _, Object in ipairs(Gui:GetDescendants()) do
                 pcall(function()
-                    if Object.Name == "MainFrame" then
+                    if Object:GetAttribute("MoonHubGroupbox") then
+                        Object.BackgroundColor3 = Library.Theme.Panel
+
+                        local UIStroke = Object:FindFirstChildOfClass("UIStroke")
+                        if UIStroke then
+                            UIStroke.Color = Library.Theme.OutlineSoft
+                        end
+                    elseif Object.Name == "MainFrame" then
                         Object.BackgroundColor3 = Library.Theme.Background
                     elseif Object.Name == "TopBar" then
                         Object.BackgroundColor3 = Library.Theme.Panel
