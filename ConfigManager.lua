@@ -509,17 +509,24 @@ function ConfigManager:BuildConfigSection(Tab)
     local ConfigInput
 
     local function GetInputName()
-        local Name
+        local Name = ""
 
         if ConfigInput and ConfigInput.Box then
-            Name = ConfigInput.Box.Text
+            Name = ConfigInput.Box.Text or ""
+        elseif ConfigInput and ConfigInput.Value then
+            Name = ConfigInput.Value
         end
 
-        if Name == nil or tostring(Name):match("^%s*$") then
-            Name = self.CurrentConfig or "Default"
+        Name = CleanName(Name)
+
+        if Name == "Default" and self.CurrentConfig ~= "Default" then
+            local Current = CleanName(self.CurrentConfig)
+            if Current ~= "Default" then
+                return Current
+            end
         end
 
-        return CleanName(Name)
+        return Name
     end
 
     local function SetInputName(Name)
@@ -536,9 +543,25 @@ function ConfigManager:BuildConfigSection(Tab)
         end
     end
 
-    local function RefreshSavedConfigs()
+    local function GetSelectedConfig()
+        if SavedConfigsDropdown and SavedConfigsDropdown.GetValue then
+            local Success, Value = pcall(function()
+                return SavedConfigsDropdown:GetValue()
+            end)
+
+            if Success and Value
+                and tostring(Value) ~= ""
+                and Value ~= "No saved configs" then
+                return CleanName(Value)
+            end
+        end
+
+        return CleanName(self.CurrentConfig)
+    end
+
+    local function RefreshSavedConfigs(SelectedName)
         local ConfigNames = self:AllConfigs()
-        local Current = CleanName(self.CurrentConfig)
+        local Current = CleanName(SelectedName or self.CurrentConfig)
         local DefaultIndex = 1
 
         for Index, Name in ipairs(ConfigNames) do
@@ -572,8 +595,6 @@ function ConfigManager:BuildConfigSection(Tab)
         })
     end
 
-    RefreshSavedConfigs()
-
     ConfigInput = Groupbox:AddInput("ConfigName", {
         Text = "Config Name",
         Default = self.CurrentConfig or "Default",
@@ -585,14 +606,39 @@ function ConfigManager:BuildConfigSection(Tab)
         end,
     })
 
+    RefreshSavedConfigs()
+
     Groupbox:AddButton("SaveConfig", {
         Text = "Save Config",
         Callback = function()
             local Name = GetInputName()
-            SetInputName(Name)
 
             if self:Save(Name) then
-                RefreshSavedConfigs()
+                SetInputName(Name)
+                RefreshSavedConfigs(Name)
+            end
+        end,
+    })
+
+    Groupbox:AddButton("OverwriteConfig", {
+        Text = "Overwrite Config",
+        Callback = function()
+            local Selected = GetSelectedConfig()
+
+            if Selected == "Default" and not self:Exists(Selected) then
+                if self.Library and self.Library.Notify then
+                    self.Library:Notify({
+                        Title = "MoonHub",
+                        Description = "Overwrite için kayıtlı bir config seç.",
+                        Time = 3,
+                    })
+                end
+                return
+            end
+
+            if self:Save(Selected) then
+                SetInputName(Selected)
+                RefreshSavedConfigs(Selected)
             end
         end,
     })
@@ -600,10 +646,11 @@ function ConfigManager:BuildConfigSection(Tab)
     Groupbox:AddButton("LoadConfig", {
         Text = "Load Config",
         Callback = function()
-            local Name = GetInputName()
+            local Name = GetSelectedConfig()
 
             if self:Load(Name) then
                 SetInputName(Name)
+                RefreshSavedConfigs(Name)
             end
         end,
     })
@@ -611,18 +658,21 @@ function ConfigManager:BuildConfigSection(Tab)
     Groupbox:AddButton("DeleteConfig", {
         Text = "Delete Config",
         Callback = function()
-            local Name = GetInputName()
+            local Name = GetSelectedConfig()
+
+            if Name == "No saved configs" then
+                return
+            end
 
             if self:Delete(Name) then
                 local ConfigNames = self:AllConfigs()
                 local NextName = ConfigNames[1] or "Default"
+
                 SetInputName(NextName)
-                RefreshSavedConfigs()
+                RefreshSavedConfigs(NextName)
             end
         end,
     })
-
-    RefreshSavedConfigs()
 
     return Groupbox
 end
