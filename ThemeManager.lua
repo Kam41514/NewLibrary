@@ -611,36 +611,46 @@ function ThemeManager:BuildThemeSection(Tab)
     end
 
     local Groupbox = Tab:AddLeftGroupbox("Themes")
+    local ThemeDropdown
 
-    local ThemeNames = self:AllThemes()
-
-    if #ThemeNames == 0 then
-        ThemeNames = { self.StartupTheme }
-    end
-
-    local DefaultTheme = 1
-    for Index, Name in ipairs(ThemeNames) do
-        if Name == self.CurrentTheme then
-            DefaultTheme = Index
-            break
+    local function RefreshThemeDropdown()
+        if ThemeDropdown then
+            pcall(function()
+                ThemeDropdown:Destroy()
+            end)
+            ThemeDropdown = nil
         end
-    end
 
-    Groupbox:AddDropdown("ThemeSelect", {
-        Text = "Theme",
-        Values = ThemeNames,
-        Default = DefaultTheme,
-        Callback = function(Value)
-            if Value then
-                self:ApplyTheme(Value)
+        local ThemeNames = self:AllThemes()
+        if #ThemeNames == 0 then
+            ThemeNames = { self.StartupTheme }
+        end
+
+        local DefaultTheme = 1
+        for Index, Name in ipairs(ThemeNames) do
+            if Name == self.CurrentTheme then
+                DefaultTheme = Index
+                break
             end
-        end,
-    })
+        end
+
+        ThemeDropdown = Groupbox:AddDropdown("ThemeSelect", {
+            Text = "Theme",
+            Values = ThemeNames,
+            Default = DefaultTheme,
+            Callback = function(Value)
+                if Value then
+                    self:ApplyTheme(Value)
+                end
+            end,
+        })
+    end
 
     Groupbox:AddButton("SaveTheme", {
         Text = "Save Theme",
         Callback = function()
             self:Save(self.CurrentTheme)
+            RefreshThemeDropdown()
         end,
     })
 
@@ -648,17 +658,37 @@ function ThemeManager:BuildThemeSection(Tab)
         Text = "Load Theme",
         Callback = function()
             self:Load(self.CurrentTheme)
+            RefreshThemeDropdown()
         end,
     })
 
     Groupbox:AddButton("DeleteTheme", {
         Text = "Delete Theme",
         Callback = function()
-            if self.CurrentTheme ~= "MoonHub" then
-                self:Delete(self.CurrentTheme)
+            if self.CurrentTheme ~= self.StartupTheme then
+                if self:Delete(self.CurrentTheme) then
+                    self.CurrentTheme = self.StartupTheme
+
+                    local MoonHubTheme = self.Themes[self.StartupTheme]
+                    if self.Library and self.Library.SetTheme and MoonHubTheme then
+                        local Copy = {}
+                        for Key, Value in pairs(MoonHubTheme) do
+                            Copy[Key] = Value
+                        end
+
+                        self.Library:SetTheme(Copy)
+                        if self.Library.RefreshTheme then
+                            self.Library:RefreshTheme()
+                        end
+                    end
+                end
             end
+
+            RefreshThemeDropdown()
         end,
     })
+
+    RefreshThemeDropdown()
 
     return Groupbox
 end
