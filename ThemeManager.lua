@@ -335,9 +335,20 @@ function ThemeManager:ApplyTheme(Name)
     end
 
     self.Library:SetTheme(Theme)
+    if self.Library.RefreshTheme then
+        self.Library:RefreshTheme()
+    end
     self.CurrentTheme = Name
 
     return true
+end
+
+function ThemeManager:Refresh()
+    if self.Library and self.Library.RefreshTheme then
+        self.Library:RefreshTheme()
+        return true
+    end
+    return false
 end
 
 function ThemeManager:SetAccent(Color)
@@ -350,6 +361,9 @@ function ThemeManager:SetAccent(Color)
     end
 
     self.Library:SetAccent(Color)
+    if self.Library.RefreshTheme then
+        self.Library:RefreshTheme()
+    end
     return true
 end
 
@@ -475,6 +489,9 @@ function ThemeManager:Load(Name)
     local Theme = DeserializeTheme(Data)
 
     self.Library:SetTheme(Theme)
+    if self.Library.RefreshTheme then
+        self.Library:RefreshTheme()
+    end
     self.CurrentTheme = Name
 
     if self.Library.Notify then
