@@ -57,7 +57,7 @@ Library.Theme = {
     Background = Color3.fromRGB(4, 4, 5),
     Sidebar = Color3.fromRGB(7, 7, 8),
     Panel = Color3.fromRGB(9, 9, 11),
-    Element = Library.Theme.ElementHover,
+    Element = Color3.fromRGB(14, 14, 17),
     ElementHover = Color3.fromRGB(19, 19, 23),
     Selected = Color3.fromRGB(17, 17, 20),
 
