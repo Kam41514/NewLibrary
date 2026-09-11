@@ -90,10 +90,54 @@ Library.Windows = {}
 Library.Unloaded = false
 Library.CurrentWindow = nil
 Library._ThemeCallbacks = {}
+Library._UnloadCallbacks = {}
 
 function Library:RegisterThemeCallback(Callback)
     table.insert(self._ThemeCallbacks, Callback)
     return Callback
+end
+
+--// Register code that must be cleaned up when the library is unloaded.
+function Library:OnUnload(Callback)
+    if type(Callback) ~= "function" then
+        return Callback
+    end
+
+    if self.Unloaded then
+        pcall(Callback)
+        return Callback
+    end
+
+    table.insert(self._UnloadCallbacks, Callback)
+    return Callback
+end
+
+--// Show / hide the main MoonHub GUI without destroying it.
+function Library:SetVisible(Visible)
+    Visible = Visible == true
+
+    for _, Window in ipairs(self.Windows) do
+        if Window and Window.Gui and Window.Gui.Parent then
+            Window.Gui.Enabled = Visible
+            Window.Visible = Visible
+        end
+    end
+
+    return Visible
+end
+
+function Library:IsVisible()
+    for _, Window in ipairs(self.Windows) do
+        if Window and Window.Gui and Window.Gui.Parent then
+            return Window.Gui.Enabled
+        end
+    end
+
+    return false
+end
+
+function Library:ToggleGUI()
+    return self:SetVisible(not self:IsVisible())
 end
 
 --//==================================================
@@ -2197,18 +2241,32 @@ function Library:Unload()
 
     Library.Unloaded = true
 
+    -- User/module cleanup runs first so scripts can safely disable
+    -- states, disconnect their own connections and restore changes.
+    for _, Callback in ipairs(Library._UnloadCallbacks) do
+        pcall(Callback)
+    end
+    table.clear(Library._UnloadCallbacks)
+
+    -- Destroy every MoonHub window.
     for _, Window in ipairs(Library.Windows) do
         if Window and not Window.Unloaded then
-            Window:Unload()
+            pcall(function()
+                Window:Unload()
+            end)
         end
     end
 
+    -- Destroy notification UI as well.
     if NotificationGui then
-        NotificationGui:Destroy()
+        pcall(function()
+            NotificationGui:Destroy()
+        end)
         NotificationGui = nil
         NotificationList = nil
     end
 
+    -- Extra safety: destroy any remaining window ScreenGui.
     for _, Window in ipairs(Library.Windows) do
         if Window and Window.Gui then
             pcall(function()
