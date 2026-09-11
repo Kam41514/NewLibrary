@@ -1022,6 +1022,84 @@ local function CreateDropdown(Groupbox, Identifier, Info)
         return Dropdown.Value
     end
 
+    function Dropdown:SetValues(NewValues, Default)
+        if type(NewValues) ~= "table" then
+            NewValues = {}
+        end
+
+        Values = NewValues
+        Dropdown.Values = NewValues
+
+        for _, Child in ipairs(OptionsFrame:GetChildren()) do
+            if Child:IsA("TextButton") then
+                Child:Destroy()
+            end
+        end
+
+        local NewSelected
+
+        if type(Default) == "number" then
+            NewSelected = Values[Default]
+        elseif Default ~= nil then
+            NewSelected = Default
+        end
+
+        if NewSelected == nil or not table.find(Values, NewSelected) then
+            if Dropdown.Value and table.find(Values, Dropdown.Value) then
+                NewSelected = Dropdown.Value
+            else
+                NewSelected = Values[1] or ""
+            end
+        end
+
+        Dropdown.Value = NewSelected
+        Selected = NewSelected
+        Label.Text = Text .. ": " .. tostring(NewSelected)
+
+        OptionsFrame.Size = UDim2.new(1, 0, 0, math.max(1, #Values) * 30 + 6)
+
+        for Index, Value in ipairs(Values) do
+            local Option = New("TextButton", {
+                Name = "Option_" .. tostring(Index),
+                Size = UDim2.new(1, -8, 0, 30),
+                BackgroundColor3 = Library.Theme.Panel,
+                BorderSizePixel = 0,
+                AutoButtonColor = false,
+                Text = tostring(Value),
+                TextColor3 = Library.Theme.Text,
+                TextSize = 11,
+                Font = Enum.Font.GothamBold,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                Parent = OptionsFrame,
+            })
+
+            New("UIPadding", {
+                PaddingLeft = UDim.new(0, 16),
+                PaddingRight = UDim.new(0, 8),
+                Parent = Option,
+            })
+
+            Option.MouseEnter:Connect(function()
+                Tween(Option, 0.1, {
+                    BackgroundColor3 = Library.Theme.ElementHover,
+                    TextColor3 = Library.Theme.TextBright,
+                })
+            end)
+
+            Option.MouseLeave:Connect(function()
+                Tween(Option, 0.1, {
+                    BackgroundColor3 = Library.Theme.Panel,
+                    TextColor3 = Library.Theme.Text,
+                })
+            end)
+
+            Option.MouseButton1Click:Connect(function()
+                SetValue(Value)
+            end)
+        end
+    end
+
     for Index, Value in ipairs(Values) do
         local Option = New("TextButton", {
             Name = "Option_" .. tostring(Index),
