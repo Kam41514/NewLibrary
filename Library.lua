@@ -85,6 +85,7 @@ Library.Toggles = {}
 Library.Options = {}
 Library.Labels = {}
 Library.Buttons = {}
+Library.KeyPickers = {}
 Library.Windows = {}
 
 Library.Unloaded = false
@@ -582,6 +583,269 @@ local function CreateToggle(Groupbox, Identifier, Info)
     UpdateVisual()
 
     return Toggle
+end
+
+--//==================================================
+--// KEY PICKER
+--//==================================================
+
+local function ResolveKey(Key)
+    if typeof(Key) == "EnumItem" and Key.EnumType == Enum.KeyCode then
+        return Key
+    end
+
+    if type(Key) == "string" then
+        local Success, Result = pcall(function()
+            return Enum.KeyCode[Key]
+        end)
+
+        if Success and Result then
+            return Result
+        end
+    end
+
+    return Enum.KeyCode.RightShift
+end
+
+local function CreateKeyPicker(Groupbox, Identifier, Info)
+    local Key, Options = MakeKey(Identifier, Info)
+
+    local Text = tostring(
+        Options.Text
+        or Options.Name
+        or Key
+    )
+
+    local CurrentKey = ResolveKey(
+        Options.Default
+        or Options.Key
+        or "RightShift"
+    )
+
+    local Mode = tostring(Options.Mode or "Toggle")
+    if Mode ~= "Toggle" and Mode ~= "Hold" then
+        Mode = "Toggle"
+    end
+
+    local Active = false
+    local Listening = false
+
+    local Container = New("Frame", {
+        Name = Key .. "KeyPicker",
+        Size = UDim2.new(1, 0, 0, 36),
+        BackgroundColor3 = Library.Theme.Element,
+        BorderSizePixel = 0,
+        Parent = Groupbox.Container,
+    })
+
+    Corner(Container, 5)
+    Stroke(Container, Library.Theme.Outline, 0.25, 1)
+    Container:SetAttribute("SearchName", NormalizeName(Key .. " " .. Text))
+
+    local Label = New("TextLabel", {
+        Name = "Text",
+        Position = UDim2.new(0, 11, 0, 0),
+        Size = UDim2.new(1, -100, 1, 0),
+        BackgroundTransparency = 1,
+        Text = Text,
+        TextColor3 = Library.Theme.Text,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Center,
+        Parent = Container,
+    })
+
+    local KeyButton = New("TextButton", {
+        Name = "KeyButton",
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -8, 0.5, 0),
+        Size = UDim2.new(0, 62, 0, 24),
+        BackgroundColor3 = Library.Theme.Panel,
+        BorderSizePixel = 0,
+        AutoButtonColor = false,
+        Text = CurrentKey.Name,
+        TextColor3 = Library.Theme.TextDim,
+        TextSize = 9,
+        Font = Enum.Font.GothamBold,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        TextYAlignment = Enum.TextYAlignment.Center,
+        Parent = Container,
+    })
+
+    Corner(KeyButton, 5)
+    Stroke(KeyButton, Library.Theme.Outline, 0.15, 1)
+
+    local KeyPicker = {
+        Type = "KeyPicker",
+        Key = Key,
+        Text = Text,
+        Mode = Mode,
+        Value = CurrentKey,
+        KeyCode = CurrentKey,
+        Active = Active,
+        Listening = Listening,
+        Container = Container,
+        Button = KeyButton,
+        Callback = Options.Callback or function() end,
+        Changed = Options.Changed or function() end,
+    }
+
+    setmetatable(KeyPicker, {__index = ElementMethods})
+
+    local function FireCallback(Value)
+        task.spawn(function()
+            KeyPicker.Callback(Value)
+        end)
+
+        task.spawn(function()
+            KeyPicker.Changed(Value)
+        end)
+    end
+
+    local function SetActive(Value)
+        Active = Value == true
+        KeyPicker.Active = Active
+        FireCallback(Active)
+    end
+
+    local function UpdateKeyButton()
+        if Listening then
+            KeyButton.Text = "Press key..."
+            KeyButton.TextColor3 = Library.Theme.TextBright
+            KeyButton.BackgroundColor3 = Library.Theme.ElementHover
+        else
+            KeyButton.Text = CurrentKey.Name
+            KeyButton.TextColor3 = Library.Theme.TextDim
+            KeyButton.BackgroundColor3 = Library.Theme.Panel
+        end
+    end
+
+    function KeyPicker:SetKey(NewKey)
+        CurrentKey = ResolveKey(NewKey)
+        self.Value = CurrentKey
+        self.KeyCode = CurrentKey
+        UpdateKeyButton()
+
+        task.spawn(function()
+            self.Changed(CurrentKey)
+        end)
+    end
+
+    function KeyPicker:GetKey()
+        return CurrentKey
+    end
+
+    function KeyPicker:SetValue(NewValue)
+        if typeof(NewValue) == "EnumItem" or type(NewValue) == "string" then
+            self:SetKey(NewValue)
+        elseif type(NewValue) == "boolean" then
+            SetActive(NewValue)
+        end
+    end
+
+    function KeyPicker:GetValue()
+        return CurrentKey
+    end
+
+    function KeyPicker:SetActive(Value)
+        SetActive(Value)
+    end
+
+    function KeyPicker:GetActive()
+        return Active
+    end
+
+    KeyButton.MouseEnter:Connect(function()
+        if not Listening then
+            Tween(KeyButton, 0.12, {
+                BackgroundColor3 = Library.Theme.ElementHover,
+                TextColor3 = Library.Theme.TextBright,
+            })
+        end
+    end)
+
+    KeyButton.MouseLeave:Connect(function()
+        if not Listening then
+            Tween(KeyButton, 0.12, {
+                BackgroundColor3 = Library.Theme.Panel,
+                TextColor3 = Library.Theme.TextDim,
+            })
+        end
+    end)
+
+    Container.MouseEnter:Connect(function()
+        Tween(Container, 0.12, {
+            BackgroundColor3 = Library.Theme.ElementHover,
+        })
+    end)
+
+    Container.MouseLeave:Connect(function()
+        Tween(Container, 0.12, {
+            BackgroundColor3 = Library.Theme.Element,
+        })
+    end)
+
+    KeyButton.MouseButton1Click:Connect(function()
+        Listening = true
+        KeyPicker.Listening = true
+        UpdateKeyButton()
+    end)
+
+    UserInputService.InputBegan:Connect(function(Input, GameProcessed)
+        if Listening then
+            if Input.UserInputType == Enum.UserInputType.Keyboard then
+                if Input.KeyCode ~= Enum.KeyCode.Unknown then
+                    CurrentKey = Input.KeyCode
+                    KeyPicker.Value = CurrentKey
+                    KeyPicker.KeyCode = CurrentKey
+                    Listening = false
+                    KeyPicker.Listening = false
+                    UpdateKeyButton()
+
+                    task.spawn(function()
+                        KeyPicker.Changed(CurrentKey)
+                    end)
+                end
+            elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
+                Listening = false
+                KeyPicker.Listening = false
+                UpdateKeyButton()
+            end
+            return
+        end
+
+        if GameProcessed then
+            return
+        end
+
+        if Input.UserInputType ~= Enum.UserInputType.Keyboard then
+            return
+        end
+
+        if Input.KeyCode ~= CurrentKey then
+            return
+        end
+
+        if Mode == "Hold" then
+            SetActive(true)
+        else
+            SetActive(not Active)
+        end
+    end)
+
+    if Mode == "Hold" then
+        UserInputService.InputEnded:Connect(function(Input)
+            if Input.UserInputType == Enum.UserInputType.Keyboard
+                and Input.KeyCode == CurrentKey then
+                SetActive(false)
+            end
+        end)
+    end
+
+    Library.KeyPickers[Key] = KeyPicker
+
+    return KeyPicker
 end
 
 --//==================================================
@@ -1303,6 +1567,10 @@ end
 
 function GroupboxMethods:AddDropdown(Identifier, Info)
     return CreateDropdown(self, Identifier, Info)
+end
+
+function GroupboxMethods:AddKeyPicker(Identifier, Info)
+    return CreateKeyPicker(self, Identifier, Info)
 end
 
 function GroupboxMethods:AddButton(Identifier, Info)
@@ -2279,6 +2547,7 @@ function Library:Unload()
     table.clear(Library.Options)
     table.clear(Library.Labels)
     table.clear(Library.Buttons)
+    table.clear(Library.KeyPickers)
     table.clear(Library.Windows)
     Library.CurrentWindow = nil
 end
