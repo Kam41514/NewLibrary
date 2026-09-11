@@ -1,15 +1,21 @@
 --[[
     MoonHub ConfigManager.lua
-    Compatible with the MoonHub Library.lua
+    Compatible with MoonHub Library.lua
 
     Features:
         - Save configuration
         - Load configuration
         - Delete configuration
+        - Config dropdown
+        - Automatic config list refresh
         - Get configuration list
         - Auto-save helpers
         - Config folder creation
         - JSON based storage
+        - Toggle support
+        - Dropdown support
+        - Input support
+        - Slider support
 
     Usage:
 
@@ -18,7 +24,6 @@
         )()
 
         ConfigManager:SetLibrary(Library)
-
         ConfigManager:SetFolder("MoonHub")
 
         ConfigManager:BuildConfigSection(Tab)
@@ -28,6 +33,12 @@
 
         -- Load:
         ConfigManager:Load("MyConfig")
+
+        -- Delete:
+        ConfigManager:Delete("MyConfig")
+
+        -- Get configs:
+        local Configs = ConfigManager:AllConfigs()
 ]]
 
 local HttpService = game:GetService("HttpService")
@@ -38,12 +49,18 @@ ConfigManager.Library = nil
 ConfigManager.Folder = "MoonHub"
 ConfigManager.ConfigExtension = ".json"
 
+ConfigManager.CurrentConfig = "Default"
+
 ConfigManager.Parser = {
     Toggles = {},
     Options = {},
     Inputs = {},
     Sliders = {},
 }
+
+ConfigManager.ConfigDropdown = nil
+ConfigManager.ConfigInput = nil
+ConfigManager.ConfigGroupbox = nil
 
 --//==================================================
 --// INTERNAL FILE FUNCTIONS
@@ -73,10 +90,9 @@ local function EnsureFolder(Folder)
 end
 
 local function Encode(Data)
-    local Success, Result =
-        pcall(function()
-            return HttpService:JSONEncode(Data)
-        end)
+    local Success, Result = pcall(function()
+        return HttpService:JSONEncode(Data)
+    end)
 
     if Success then
         return Result
@@ -86,10 +102,9 @@ local function Encode(Data)
 end
 
 local function Decode(Data)
-    local Success, Result =
-        pcall(function()
-            return HttpService:JSONDecode(Data)
-        end)
+    local Success, Result = pcall(function()
+        return HttpService:JSONDecode(Data)
+    end)
 
     if Success then
         return Result
@@ -103,6 +118,18 @@ local function GetConfigPath(Name)
         .. "/"
         .. tostring(Name)
         .. ConfigManager.ConfigExtension
+end
+
+local function Notify(Title, Description, Time)
+    if ConfigManager.Library
+        and ConfigManager.Library.Notify then
+
+        ConfigManager.Library:Notify({
+            Title = Title or "MoonHub",
+            Description = Description or "",
+            Time = Time or 3,
+        })
+    end
 end
 
 --//==================================================
@@ -166,21 +193,24 @@ end
 
 function ConfigManager:Refresh()
     if not self.Library then
-        return
+        return self
     end
 
+    -- Toggles
     if self.Library.Toggles then
         for Key, Toggle in pairs(self.Library.Toggles) do
             self:RegisterToggle(Key, Toggle)
         end
     end
 
+    -- Dropdowns
     if self.Library.Options then
         for Key, Option in pairs(self.Library.Options) do
             self:RegisterOption(Key, Option)
         end
     end
 
+    -- Inputs
     if self.Library.Labels then
         for Key, Label in pairs(self.Library.Labels) do
             if Label.Type == "Input" then
@@ -189,11 +219,18 @@ function ConfigManager:Refresh()
         end
     end
 
+    -- Sliders
+    if self.Library.Sliders then
+        for Key, Slider in pairs(self.Library.Sliders) do
+            self:RegisterSlider(Key, Slider)
+        end
+    end
+
     return self
 end
 
 --//==================================================
---// COLLECT
+--// COLLECT CONFIG
 --//==================================================
 
 function ConfigManager:GetConfig()
@@ -208,76 +245,85 @@ function ConfigManager:GetConfig()
 
     --// TOGGLES
 
-    for Key, Toggle in pairs(
-        self.Parser.Toggles
-    ) do
+    for Key, Toggle in pairs(self.Parser.Toggles) do
 
         if Toggle.GetValue then
-            local Success, Value =
-                pcall(function()
-                    return Toggle:GetValue()
-                end)
+
+            local Success, Value = pcall(function()
+                return Toggle:GetValue()
+            end)
 
             if Success then
                 Config.Toggles[Key] = Value
             end
+
         elseif Toggle.Value ~= nil then
-            Config.Toggles[Key] =
-                Toggle.Value
+
+            Config.Toggles[Key] = Toggle.Value
+
         end
     end
 
     --// DROPDOWNS
 
-    for Key, Option in pairs(
-        self.Parser.Options
-    ) do
+    for Key, Option in pairs(self.Parser.Options) do
 
         if Option.GetValue then
-            local Success, Value =
-                pcall(function()
-                    return Option:GetValue()
-                end)
+
+            local Success, Value = pcall(function()
+                return Option:GetValue()
+            end)
 
             if Success then
                 Config.Options[Key] = Value
             end
+
         elseif Option.Value ~= nil then
-            Config.Options[Key] =
-                Option.Value
+
+            Config.Options[Key] = Option.Value
+
         end
     end
 
     --// INPUTS
 
-    for Key, Input in pairs(
-        self.Parser.Inputs
-    ) do
+    for Key, Input in pairs(self.Parser.Inputs) do
 
         if Input.GetValue then
-            local Success, Value =
-                pcall(function()
-                    return Input:GetValue()
-                end)
+
+            local Success, Value = pcall(function()
+                return Input:GetValue()
+            end)
 
             if Success then
                 Config.Inputs[Key] = Value
             end
+
         elseif Input.Value ~= nil then
-            Config.Inputs[Key] =
-                Input.Value
+
+            Config.Inputs[Key] = Input.Value
+
         end
     end
 
     --// SLIDERS
 
-    for Key, Slider in pairs(
-        self.Parser.Sliders
-    ) do
+    for Key, Slider in pairs(self.Parser.Sliders) do
 
-        if Slider.Value ~= nil then
-            Config.Sliders[Key] =
-                Slider.Value
+        if Slider.GetValue then
+
+            local Success, Value = pcall(function()
+                return Slider:GetValue()
+            end)
+
+            if Success then
+                Config.Sliders[Key] = Value
+            end
+
+        elseif Slider.Value ~= nil then
+
+            Config.Sliders[Key] = Slider.Value
+
         end
     end
 
@@ -285,7 +331,7 @@ function ConfigManager:GetConfig()
 end
 
 --//==================================================
---// APPLY
+--// APPLY CONFIG
 --//==================================================
 
 function ConfigManager:LoadData(Config)
@@ -299,12 +345,9 @@ function ConfigManager:LoadData(Config)
 
     if type(Config.Toggles) == "table" then
 
-        for Key, Value in pairs(
-            Config.Toggles
-        ) do
+        for Key, Value in pairs(Config.Toggles) do
 
-            local Toggle =
-                self.Parser.Toggles[Key]
+            local Toggle = self.Parser.Toggles[Key]
 
             if Toggle
                 and Toggle.SetValue then
@@ -314,6 +357,7 @@ function ConfigManager:LoadData(Config)
                         Value == true
                     )
                 end)
+
             end
         end
     end
@@ -322,12 +366,9 @@ function ConfigManager:LoadData(Config)
 
     if type(Config.Options) == "table" then
 
-        for Key, Value in pairs(
-            Config.Options
-        ) do
+        for Key, Value in pairs(Config.Options) do
 
-            local Option =
-                self.Parser.Options[Key]
+            local Option = self.Parser.Options[Key]
 
             if Option
                 and Option.SetValue then
@@ -335,6 +376,7 @@ function ConfigManager:LoadData(Config)
                 pcall(function()
                     Option:SetValue(Value)
                 end)
+
             end
         end
     end
@@ -343,12 +385,9 @@ function ConfigManager:LoadData(Config)
 
     if type(Config.Inputs) == "table" then
 
-        for Key, Value in pairs(
-            Config.Inputs
-        ) do
+        for Key, Value in pairs(Config.Inputs) do
 
-            local Input =
-                self.Parser.Inputs[Key]
+            local Input = self.Parser.Inputs[Key]
 
             if Input
                 and Input.SetValue then
@@ -356,6 +395,7 @@ function ConfigManager:LoadData(Config)
                 pcall(function()
                     Input:SetValue(Value)
                 end)
+
             end
         end
     end
@@ -364,12 +404,9 @@ function ConfigManager:LoadData(Config)
 
     if type(Config.Sliders) == "table" then
 
-        for Key, Value in pairs(
-            Config.Sliders
-        ) do
+        for Key, Value in pairs(Config.Sliders) do
 
-            local Slider =
-                self.Parser.Sliders[Key]
+            local Slider = self.Parser.Sliders[Key]
 
             if Slider
                 and Slider.SetValue then
@@ -377,6 +414,7 @@ function ConfigManager:LoadData(Config)
                 pcall(function()
                     Slider:SetValue(Value)
                 end)
+
             end
         end
     end
@@ -389,22 +427,19 @@ end
 --//==================================================
 
 function ConfigManager:Save(Name)
-    if not CanUseFileSystem() then
-        if self.Library
-            and self.Library.Notify then
 
-            self.Library:Notify({
-                Title = "MoonHub",
-                Description =
-                    "Config sistemi bu executor'da desteklenmiyor.",
-                Time = 4,
-            })
-        end
+    if not CanUseFileSystem() then
+
+        Notify(
+            "MoonHub",
+            "Config sistemi bu executor'da desteklenmiyor.",
+            4
+        )
 
         return false
     end
 
-    Name = tostring(Name or "Default")
+    Name = tostring(Name or self.CurrentConfig or "Default")
 
     if Name == "" then
         Name = "Default"
@@ -412,58 +447,64 @@ function ConfigManager:Save(Name)
 
     EnsureFolder(self.Folder)
 
-    local Config =
-        self:GetConfig()
+    local Config = self:GetConfig()
 
     Config.Version = 1
     Config.Name = Name
 
-    local Encoded =
-        Encode(Config)
+    local Encoded = Encode(Config)
 
     if not Encoded then
 
-        if self.Library
-            and self.Library.Notify then
-
-            self.Library:Notify({
-                Title = "MoonHub",
-                Description =
-                    "Config kaydedilemedi.",
-                Time = 4,
-            })
-        end
+        Notify(
+            "MoonHub",
+            "Config kaydedilemedi.",
+            4
+        )
 
         return false
     end
 
-    local Path =
-        GetConfigPath(Name)
+    local Path = GetConfigPath(Name)
 
-    local Success =
-        pcall(function()
-            writefile(
-                Path,
-                Encoded
-            )
-        end)
+    local Success = pcall(function()
+        writefile(
+            Path,
+            Encoded
+        )
+    end)
 
     if Success then
 
-        if self.Library
-            and self.Library.Notify then
+        self.CurrentConfig = Name
 
-            self.Library:Notify({
-                Title = "MoonHub",
-                Description =
-                    "Config kaydedildi: "
-                    .. Name,
-                Time = 3,
-            })
+        -- Input varsa güncelle
+        if self.ConfigInput
+            and self.ConfigInput.SetValue then
+
+            pcall(function()
+                self.ConfigInput:SetValue(Name)
+            end)
+
         end
+
+        -- Dropdown'u yenile
+        self:RefreshConfigDropdown(Name)
+
+        Notify(
+            "MoonHub",
+            "Config kaydedildi: " .. Name,
+            3
+        )
 
         return true
     end
+
+    Notify(
+        "MoonHub",
+        "Config kaydedilemedi: " .. Name,
+        4
+    )
 
     return false
 end
@@ -473,89 +514,107 @@ end
 --//==================================================
 
 function ConfigManager:Load(Name)
+
     if not CanUseFileSystem() then
 
-        if self.Library
-            and self.Library.Notify then
-
-            self.Library:Notify({
-                Title = "MoonHub",
-                Description =
-                    "Config sistemi bu executor'da desteklenmiyor.",
-                Time = 4,
-            })
-        end
+        Notify(
+            "MoonHub",
+            "Config sistemi bu executor'da desteklenmiyor.",
+            4
+        )
 
         return false
     end
 
-    Name = tostring(Name or "Default")
+    Name = tostring(
+        Name
+        or self.CurrentConfig
+        or "Default"
+    )
 
-    local Path =
-        GetConfigPath(Name)
+    if Name == ""
+        or Name == "No configs" then
+
+        Notify(
+            "MoonHub",
+            "Yüklenecek config seçilmedi.",
+            3
+        )
+
+        return false
+    end
+
+    local Path = GetConfigPath(Name)
 
     if not isfile(Path) then
 
-        if self.Library
-            and self.Library.Notify then
-
-            self.Library:Notify({
-                Title = "MoonHub",
-                Description =
-                    "Config bulunamadı: "
-                    .. Name,
-                Time = 4,
-            })
-        end
+        Notify(
+            "MoonHub",
+            "Config bulunamadı: " .. Name,
+            4
+        )
 
         return false
     end
 
-    local Success, Raw =
-        pcall(function()
-            return readfile(Path)
-        end)
+    local Success, Raw = pcall(function()
+        return readfile(Path)
+    end)
 
     if not Success then
+
+        Notify(
+            "MoonHub",
+            "Config okunamadı: " .. Name,
+            4
+        )
+
         return false
     end
 
-    local Config =
-        Decode(Raw)
+    local Config = Decode(Raw)
 
     if not Config then
 
-        if self.Library
-            and self.Library.Notify then
-
-            self.Library:Notify({
-                Title = "MoonHub",
-                Description =
-                    "Config okunamadı: "
-                    .. Name,
-                Time = 4,
-            })
-        end
+        Notify(
+            "MoonHub",
+            "Config JSON verisi bozuk: " .. Name,
+            4
+        )
 
         return false
     end
 
-    local Applied =
-        self:LoadData(Config)
+    local Applied = self:LoadData(Config)
 
     if Applied then
 
-        if self.Library
-            and self.Library.Notify then
+        self.CurrentConfig = Name
 
-            self.Library:Notify({
-                Title = "MoonHub",
-                Description =
-                    "Config yüklendi: "
-                    .. Name,
-                Time = 3,
-            })
+        if self.ConfigInput
+            and self.ConfigInput.SetValue then
+
+            pcall(function()
+                self.ConfigInput:SetValue(Name)
+            end)
+
         end
+
+        if self.ConfigDropdown
+            and self.ConfigDropdown.SetValue then
+
+            pcall(function()
+                self.ConfigDropdown:SetValue(Name)
+            end)
+
+        end
+
+        Notify(
+            "MoonHub",
+            "Config yüklendi: " .. Name,
+            3
+        )
+
     end
 
     return Applied
@@ -566,37 +625,75 @@ end
 --//==================================================
 
 function ConfigManager:Delete(Name)
+
     if not CanUseFileSystem() then
         return false
     end
 
-    Name = tostring(Name or "Default")
+    Name = tostring(
+        Name
+        or self.CurrentConfig
+        or "Default"
+    )
 
-    local Path =
-        GetConfigPath(Name)
-
-    if not isfile(Path) then
+    if Name == ""
+        or Name == "No configs" then
         return false
     end
 
-    local Success =
-        pcall(function()
-            delfile(Path)
-        end)
+    local Path = GetConfigPath(Name)
+
+    if not isfile(Path) then
+
+        Notify(
+            "MoonHub",
+            "Config bulunamadı: " .. Name,
+            3
+        )
+
+        return false
+    end
+
+    local Success = pcall(function()
+        delfile(Path)
+    end)
 
     if Success then
 
-        if self.Library
-            and self.Library.Notify then
+        Notify(
+            "MoonHub",
+            "Config silindi: " .. Name,
+            3
+        )
 
-            self.Library:Notify({
-                Title = "MoonHub",
-                Description =
-                    "Config silindi: "
-                    .. Name,
-                Time = 3,
-            })
+        local Configs = self:AllConfigs()
+
+        if #Configs > 0 then
+
+            self.CurrentConfig = Configs[1]
+
+        else
+
+            self.CurrentConfig = "Default"
+
         end
+
+        -- Input'u güncelle
+        if self.ConfigInput
+            and self.ConfigInput.SetValue then
+
+            pcall(function()
+                self.ConfigInput:SetValue(
+                    self.CurrentConfig
+                )
+            end)
+
+        end
+
+        -- Dropdown'u yenile
+        self:RefreshConfigDropdown(
+            self.CurrentConfig
+        )
 
         return true
     end
@@ -609,11 +706,16 @@ end
 --//==================================================
 
 function ConfigManager:Exists(Name)
+
     if not CanUseFileSystem() then
         return false
     end
 
-    Name = tostring(Name or "Default")
+    Name = tostring(
+        Name
+        or self.CurrentConfig
+        or "Default"
+    )
 
     return isfile(
         GetConfigPath(Name)
@@ -625,6 +727,7 @@ end
 --//==================================================
 
 function ConfigManager:AllConfigs()
+
     if not CanUseFileSystem() then
         return {}
     end
@@ -637,12 +740,9 @@ function ConfigManager:AllConfigs()
         return Files
     end
 
-    local Success, Result =
-        pcall(function()
-            return listfiles(
-                self.Folder
-            )
-        end)
+    local Success, Result = pcall(function()
+        return listfiles(self.Folder)
+    end)
 
     if not Success
         or type(Result) ~= "table" then
@@ -657,33 +757,150 @@ function ConfigManager:AllConfigs()
             -#self.ConfigExtension
         ) == self.ConfigExtension then
 
-            local FileName =
-                string.match(
-                    Path,
-                    "([^/\\]+)"
-                )
+            local FileName = string.match(
+                Path,
+                "([^/\\]+)"
+            )
 
             if FileName then
 
-                FileName =
-                    string.sub(
-                        FileName,
-                        1,
-                        #FileName
-                        - #self.ConfigExtension
+                FileName = string.sub(
+                    FileName,
+                    1,
+                    #FileName - #self.ConfigExtension
+                )
+
+                if FileName ~= "" then
+
+                    table.insert(
+                        Files,
+                        FileName
                     )
 
-                table.insert(
-                    Files,
-                    FileName
-                )
+                end
             end
         end
     end
 
-    table.sort(Files)
+    table.sort(Files, function(A, B)
+        return string.lower(A)
+            < string.lower(B)
+    end)
 
     return Files
+end
+
+--//==================================================
+--// REFRESH CONFIG DROPDOWN
+--//==================================================
+
+function ConfigManager:RefreshConfigDropdown(SelectedName)
+
+    if not self.ConfigGroupbox then
+        return
+    end
+
+    local Configs = self:AllConfigs()
+
+    local Values = {}
+
+    for _, Name in ipairs(Configs) do
+        table.insert(
+            Values,
+            Name
+        )
+    end
+
+    -- Hiç config yoksa placeholder
+    if #Values == 0 then
+        Values = {
+            "No configs"
+        }
+    end
+
+    -- Eski dropdown'u temizle
+    if self.ConfigDropdown then
+
+        pcall(function()
+            self.ConfigDropdown:Destroy()
+        end)
+
+        self.ConfigDropdown = nil
+    end
+
+    local DefaultValue = SelectedName
+
+    if not DefaultValue
+        or DefaultValue == ""
+        or DefaultValue == "Default" then
+
+        if #Configs > 0 then
+            DefaultValue = Configs[1]
+        else
+            DefaultValue = "No configs"
+        end
+    end
+
+    -- Seçilen config gerçekten listede mi?
+    local Found = false
+
+    for _, Name in ipairs(Values) do
+
+        if Name == DefaultValue then
+            Found = true
+            break
+        end
+    end
+
+    if not Found then
+
+        if #Configs > 0 then
+            DefaultValue = Configs[1]
+        else
+            DefaultValue = "No configs"
+        end
+
+    end
+
+    self.CurrentConfig = DefaultValue
+
+    self.ConfigDropdown =
+        self.ConfigGroupbox:AddDropdown(
+            "SavedConfigs",
+            {
+                Text = "Saved Configs",
+                Values = Values,
+                Default = DefaultValue,
+
+                Callback = function(Value)
+
+                    Value = tostring(
+                        Value or ""
+                    )
+
+                    if Value == ""
+                        or Value == "No configs" then
+                        return
+                    end
+
+                    self.CurrentConfig = Value
+
+                    -- Config name input'u da eşitle
+                    if self.ConfigInput
+                        and self.ConfigInput.SetValue then
+
+                        pcall(function()
+                            self.ConfigInput:SetValue(
+                                Value
+                            )
+                        end)
+
+                    end
+                end,
+            }
+        )
+
+    return self.ConfigDropdown
 end
 
 --//==================================================
@@ -691,6 +908,7 @@ end
 --//==================================================
 
 function ConfigManager:BuildConfigSection(Tab)
+
     if not Tab then
         return nil
     end
@@ -700,61 +918,154 @@ function ConfigManager:BuildConfigSection(Tab)
             "Configuration"
         )
 
-    Groupbox:AddInput(
-        "ConfigName",
-        {
-            Text = "Config Name",
-            Default = "Default",
-            Placeholder = "Config name...",
-            ClearTextOnFocus = false,
-            Callback = function(Value)
-                self.CurrentConfig =
-                    tostring(Value or "Default")
-            end,
-        }
+    self.ConfigGroupbox = Groupbox
+
+    --// CONFIG NAME INPUT
+
+    self.ConfigInput =
+        Groupbox:AddInput(
+            "ConfigName",
+            {
+                Text = "Config Name",
+                Default = self.CurrentConfig
+                    or "Default",
+
+                Placeholder =
+                    "Config name...",
+
+                ClearTextOnFocus = false,
+
+                Callback = function(Value)
+
+                    Value = tostring(
+                        Value or ""
+                    )
+
+                    if Value ~= "" then
+                        self.CurrentConfig = Value
+                    end
+
+                end,
+            }
+        )
+
+    --// SAVED CONFIG DROPDOWN
+
+    self:RefreshConfigDropdown(
+        self.CurrentConfig
     )
+
+    --// SAVE BUTTON
 
     Groupbox:AddButton(
         "SaveConfig",
         {
             Text = "Save Config",
+
             Callback = function()
 
                 local Name =
                     self.CurrentConfig
                     or "Default"
 
+                if self.ConfigInput
+                    and self.ConfigInput.GetValue then
+
+                    local Success, Value =
+                        pcall(function()
+                            return self.ConfigInput:GetValue()
+                        end)
+
+                    if Success
+                        and Value
+                        and tostring(Value) ~= "" then
+
+                        Name = tostring(Value)
+
+                    end
+                end
+
+                if Name == ""
+                    or Name == "No configs" then
+
+                    Name = "Default"
+
+                end
+
                 self:Save(Name)
+
             end,
         }
     )
+
+    --// LOAD BUTTON
 
     Groupbox:AddButton(
         "LoadConfig",
         {
             Text = "Load Config",
+
             Callback = function()
 
                 local Name =
                     self.CurrentConfig
-                    or "Default"
+
+                if self.ConfigDropdown
+                    and self.ConfigDropdown.GetValue then
+
+                    local Success, Value =
+                        pcall(function()
+                            return self.ConfigDropdown:GetValue()
+                        end)
+
+                    if Success
+                        and Value
+                        and tostring(Value) ~= ""
+                        and tostring(Value) ~= "No configs" then
+
+                        Name = tostring(Value)
+
+                    end
+                end
 
                 self:Load(Name)
+
             end,
         }
     )
+
+    --// DELETE BUTTON
 
     Groupbox:AddButton(
         "DeleteConfig",
         {
             Text = "Delete Config",
+
             Callback = function()
 
                 local Name =
                     self.CurrentConfig
-                    or "Default"
+
+                if self.ConfigDropdown
+                    and self.ConfigDropdown.GetValue then
+
+                    local Success, Value =
+                        pcall(function()
+                            return self.ConfigDropdown:GetValue()
+                        end)
+
+                    if Success
+                        and Value
+                        and tostring(Value) ~= ""
+                        and tostring(Value) ~= "No configs" then
+
+                        Name = tostring(Value)
+
+                    end
+                end
 
                 self:Delete(Name)
+
             end,
         }
     )
@@ -772,9 +1083,15 @@ ConfigManager.AutoSaveInterval = 60
 ConfigManager._AutoSaveRunning = false
 
 function ConfigManager:EnableAutoSave(Name, Interval)
+
     self.AutoSave = true
+
     self.AutoSaveName =
-        tostring(Name or "Default")
+        tostring(
+            Name
+            or self.CurrentConfig
+            or "Default"
+        )
 
     self.AutoSaveInterval =
         tonumber(Interval)
@@ -798,13 +1115,16 @@ function ConfigManager:EnableAutoSave(Name, Interval)
             )
 
             if self.AutoSave then
+
                 self:Save(
                     self.AutoSaveName
                 )
+
             end
         end
 
         self._AutoSaveRunning = false
+
     end)
 end
 
@@ -816,12 +1136,32 @@ end
 --// CURRENT CONFIG
 --//==================================================
 
-ConfigManager.CurrentConfig =
-    "Default"
-
 function ConfigManager:SetCurrentConfig(Name)
-    self.CurrentConfig =
-        tostring(Name or "Default")
+
+    Name = tostring(
+        Name or "Default"
+    )
+
+    self.CurrentConfig = Name
+
+    if self.ConfigInput
+        and self.ConfigInput.SetValue then
+
+        pcall(function()
+            self.ConfigInput:SetValue(Name)
+        end)
+
+    end
+
+    if self.ConfigDropdown
+        and self.ConfigDropdown.SetValue
+        and Name ~= "No configs" then
+
+        pcall(function()
+            self.ConfigDropdown:SetValue(Name)
+        end)
+
+    end
 
     return self.CurrentConfig
 end
@@ -834,7 +1174,11 @@ end
 --// INIT
 --//==================================================
 
-function ConfigManager:Init(Library, Folder)
+function ConfigManager:Init(
+    Library,
+    Folder
+)
+
     if Library then
         self:SetLibrary(Library)
     end
