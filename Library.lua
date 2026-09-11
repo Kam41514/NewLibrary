@@ -1003,30 +1003,30 @@ end
 --// SLIDER
 --//==================================================
 
-local function CreateSlider(Groupbox, Identifier, Info)
-    local Key, Options = MakeKey(Identifier, Info)
+local function CreateSlider(Parent, Key, Options)
+    Options = Options or {}
 
-    local Text = tostring(
-        Options.Text
-        or Options.Name
-        or Key
-    )
-
+    local Text = Options.Text or Key
     local Min = tonumber(Options.Min) or 0
     local Max = tonumber(Options.Max) or 100
-    local Default = tonumber(Options.Default) or Min
+    local Default = tonumber(Options.Default)
 
-    if Max <= Min then
-        Max = Min + 1
+    if Min > Max then
+        Min, Max = Max, Min
+    end
+
+    if Default == nil then
+        Default = Min
     end
 
     Default = math.clamp(Default, Min, Max)
 
     local Holder = New("Frame", {
-        Name = Key .. "Slider",
+        Name = Key,
         Size = UDim2.new(1, 0, 0, 52),
         BackgroundTransparency = 1,
-        Parent = Groupbox.Container,
+        BorderSizePixel = 0,
+        Parent = Parent.Container,
     })
 
     local Label = New("TextLabel", {
@@ -1054,29 +1054,57 @@ local function CreateSlider(Groupbox, Identifier, Info)
         Parent = Holder,
     })
 
-    local Bar = New("Frame", {
+    -- Modern slider track.
+    -- İnce bir çizgi yerine UICorner'lı, daha dolgun bir kapsül kullanılıyor.
+    local SliderTrack = New("Frame", {
+        Name = "SliderTrack",
         Position = UDim2.new(0, 0, 0, 29),
-        Size = UDim2.new(1, 0, 0, 6),
+        Size = UDim2.new(1, 0, 0, 10),
         BackgroundColor3 = Library.Theme.ToggleOff,
         BorderSizePixel = 0,
+        ClipsDescendants = false,
         Parent = Holder,
     })
 
-    Corner(Bar, 6)
+    Corner(SliderTrack, 5)
 
-    local Fill = New("Frame", {
-        Size = UDim2.new(
-            (Default - Min) / (Max - Min),
-            0,
-            1,
-            0
-        ),
+    local Percent = 0
+    if Max ~= Min then
+        Percent = (Default - Min) / (Max - Min)
+    end
+
+    local SliderFill = New("Frame", {
+        Name = "SliderFill",
+        Size = UDim2.new(Percent, 0, 1, 0),
         BackgroundColor3 = Library.Theme.Accent,
         BorderSizePixel = 0,
-        Parent = Bar,
+        Parent = SliderTrack,
     })
 
-    Corner(Fill, 6)
+    Corner(SliderFill, 5)
+
+    -- Sürüklenebilir modern thumb:
+    -- Yuvarlak nokta yerine küçük UICorner'lı kapsül/frame.
+    local SliderThumb = New("Frame", {
+        Name = "SliderThumb",
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(Percent, 0, 0.5, 0),
+        Size = UDim2.new(0, 14, 0, 14),
+        BackgroundColor3 = Library.Theme.TextBright,
+        BorderSizePixel = 0,
+        ZIndex = 3,
+        Parent = SliderTrack,
+    })
+
+    Corner(SliderThumb, 5)
+
+    local ThumbStroke = New("UIStroke", {
+        Name = "ThumbStroke",
+        Thickness = 1,
+        Color = Library.Theme.Outline,
+        Transparency = 0,
+        Parent = SliderThumb,
+    })
 
     local Value = Default
     local Dragging = false
@@ -1095,6 +1123,32 @@ local function CreateSlider(Groupbox, Identifier, Info)
 
     setmetatable(Slider, {__index = ElementMethods})
 
+    local function SetVisualPercent(ValueToUse)
+        local VisualPercent = 0
+
+        if Max ~= Min then
+            VisualPercent = math.clamp(
+                (ValueToUse - Min) / (Max - Min),
+                0,
+                1
+            )
+        end
+
+        SliderFill.Size = UDim2.new(
+            VisualPercent,
+            0,
+            1,
+            0
+        )
+
+        SliderThumb.Position = UDim2.new(
+            VisualPercent,
+            0,
+            0.5,
+            0
+        )
+    end
+
     local function SetValue(NewValue)
         NewValue = math.clamp(
             tonumber(NewValue) or Min,
@@ -1111,23 +1165,11 @@ local function CreateSlider(Groupbox, Identifier, Info)
             NewValue = math.floor(NewValue + 0.5)
         end
 
-        Value = NewValue
+        Value = math.clamp(NewValue, Min, Max)
         Slider.Value = Value
 
-        local Percent =
-            (Value - Min) /
-            (Max - Min)
-
-        Fill.Size =
-            UDim2.new(
-                Percent,
-                0,
-                1,
-                0
-            )
-
-        ValueLabel.Text =
-            tostring(Value)
+        SetVisualPercent(Value)
+        ValueLabel.Text = tostring(Value)
 
         task.spawn(function()
             Slider.Callback(Value)
@@ -1148,56 +1190,59 @@ local function CreateSlider(Groupbox, Identifier, Info)
 
     Library.Options[Key] = Slider
 
-    local function UpdateFromInput(Input)
-        local X = Input.Position.X
-        local Start = Bar.AbsolutePosition.X
-        local Width = Bar.AbsoluteSize.X
+    local function UpdateFromX(X)
+        local Start = SliderTrack.AbsolutePosition.X
+        local Width = SliderTrack.AbsoluteSize.X
 
-        local Percent =
-            math.clamp(
-                (X - Start) / Width,
-                0,
-                1
-            )
+        if Width <= 0 then
+            return
+        end
+
+        local VisualPercent = math.clamp(
+            (X - Start) / Width,
+            0,
+            1
+        )
 
         SetValue(
-            Min +
-            ((Max - Min) * Percent)
+            Min + ((Max - Min) * VisualPercent)
         )
     end
 
-    Bar.InputBegan:Connect(function(Input)
-        if Input.UserInputType ==
-            Enum.UserInputType.MouseButton1
-            or Input.UserInputType ==
-            Enum.UserInputType.Touch then
+    local function BeginDrag(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1
+            or Input.UserInputType == Enum.UserInputType.Touch then
 
             Dragging = true
-            UpdateFromInput(Input)
+            UpdateFromX(Input.Position.X)
         end
-    end)
+    end
+
+    SliderTrack.InputBegan:Connect(BeginDrag)
+    SliderThumb.InputBegan:Connect(BeginDrag)
 
     UserInputService.InputChanged:Connect(function(Input)
-        if Dragging and (
-            Input.UserInputType ==
-            Enum.UserInputType.MouseMovement
-            or Input.UserInputType ==
-            Enum.UserInputType.Touch
-        ) then
+        if not Dragging then
+            return
+        end
 
-            UpdateFromInput(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseMovement
+            or Input.UserInputType == Enum.UserInputType.Touch then
+
+            UpdateFromX(Input.Position.X)
         end
     end)
 
     UserInputService.InputEnded:Connect(function(Input)
-        if Input.UserInputType ==
-            Enum.UserInputType.MouseButton1
-            or Input.UserInputType ==
-            Enum.UserInputType.Touch then
+        if Input.UserInputType == Enum.UserInputType.MouseButton1
+            or Input.UserInputType == Enum.UserInputType.Touch then
 
             Dragging = false
         end
     end)
+
+    -- Başlangıç görünümünü garanti et.
+    SetVisualPercent(Value)
 
     return Slider
 end
@@ -2056,7 +2101,15 @@ function Library:RefreshTheme()
                         Object.BackgroundColor3 = Library.Theme.TextDim
                     elseif Object.Name == "CircleStroke" then
                         Object.Color = Library.Theme.TextDim
-                    elseif Object.Name == "ChevronLeft" or Object.Name == "ChevronRight" then
+                    elseif Object.Name == "SliderTrack" then
+    Object.BackgroundColor3 = Library.Theme.ToggleOff
+elseif Object.Name == "SliderFill" then
+    Object.BackgroundColor3 = Library.Theme.Accent
+elseif Object.Name == "SliderThumb" then
+    Object.BackgroundColor3 = Library.Theme.TextBright
+elseif Object.Name == "ThumbStroke" then
+    Object.Color = Library.Theme.Outline
+elseif Object.Name == "ChevronLeft" or Object.Name == "ChevronRight" then
                         Object.BackgroundColor3 = Library.Theme.TextDim
                     elseif Object.Name == "Header" then
                         Object.TextColor3 = Library.Theme.TextBright
