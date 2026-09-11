@@ -32,6 +32,9 @@ ThemeManager.Extension = ".json"
 
 ThemeManager.CurrentTheme = "MoonHub"
 
+-- MoonHub is always the startup theme.
+ThemeManager.StartupTheme = "MoonHub"
+
 ThemeManager.Themes = {
     MoonHub = {
         Background = Color3.fromRGB(4, 4, 5),
@@ -334,21 +337,17 @@ function ThemeManager:ApplyTheme(Name)
         return false
     end
 
-    self.Library:SetTheme(Theme)
+    local Copy = {}
+    for Key, Value in pairs(Theme) do Copy[Key] = Value end
+    self.Library:SetTheme(Copy)
+    self.CurrentTheme = Name
     if self.Library.RefreshTheme then
         self.Library:RefreshTheme()
+        task.defer(function()
+            if self.Library and self.Library.RefreshTheme then self.Library:RefreshTheme() end
+        end)
     end
-    self.CurrentTheme = Name
-
     return true
-end
-
-function ThemeManager:Refresh()
-    if self.Library and self.Library.RefreshTheme then
-        self.Library:RefreshTheme()
-        return true
-    end
-    return false
 end
 
 function ThemeManager:SetAccent(Color)
@@ -361,9 +360,6 @@ function ThemeManager:SetAccent(Color)
     end
 
     self.Library:SetAccent(Color)
-    if self.Library.RefreshTheme then
-        self.Library:RefreshTheme()
-    end
     return true
 end
 
@@ -489,10 +485,13 @@ function ThemeManager:Load(Name)
     local Theme = DeserializeTheme(Data)
 
     self.Library:SetTheme(Theme)
+    self.CurrentTheme = Name
     if self.Library.RefreshTheme then
         self.Library:RefreshTheme()
+        task.defer(function()
+            if self.Library and self.Library.RefreshTheme then self.Library:RefreshTheme() end
+        end)
     end
-    self.CurrentTheme = Name
 
     if self.Library.Notify then
         self.Library:Notify({
@@ -655,6 +654,24 @@ end
 function ThemeManager:Init(Library, Folder)
     if Library then
         self:SetLibrary(Library)
+
+        -- MoonHub her zaman başlangıç teması olsun.
+        self.CurrentTheme = "MoonHub"
+
+        local MoonHubTheme = self.Themes.MoonHub
+        if MoonHubTheme then
+            local Copy = {}
+
+            for Key, Value in pairs(MoonHubTheme) do
+                Copy[Key] = Value
+            end
+
+            self.Library:SetTheme(Copy)
+
+            if self.Library.RefreshTheme then
+                self.Library:RefreshTheme()
+            end
+        end
     end
 
     if Folder then
