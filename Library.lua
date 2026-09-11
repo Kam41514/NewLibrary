@@ -115,10 +115,6 @@ function Library:OnUnload(Callback)
     return Callback
 end
 
-function Library:UnOnload(Callback)
-    return self:OnUnload(Callback)
-end
-
 function Library:RegisterUnloadCallback(Callback)
     return self:OnUnload(Callback)
 end
@@ -2076,23 +2072,11 @@ function WindowMethods:Toggle()
 end
 
 function WindowMethods:Unload()
-    if self.Unloaded then
-        return
+    if Library.Unloaded then
+        return false
     end
 
-    self.Unloaded = true
-
-    if self.Frame then
-        self.Frame:Destroy()
-    end
-
-    for Key, Toggle in pairs(Library.Toggles) do
-        Library.Toggles[Key] = nil
-    end
-
-    if Library.CurrentWindow == self then
-        Library.CurrentWindow = nil
-    end
+    return Library:Unload()
 end
 
 --//==================================================
@@ -2595,22 +2579,30 @@ function Library:Unload()
         return false
     end
 
+    self.Unloaded = true
+
     local Callbacks = table.clone(self._UnloadCallbacks)
     table.clear(self._UnloadCallbacks)
 
     for _, Callback in ipairs(Callbacks) do
-        task.spawn(function()
-            pcall(Callback)
-        end)
+        pcall(Callback)
     end
 
-    self.Unloaded = true
-
     for _, Window in ipairs(self.Windows) do
-        if Window and not Window.Unloaded then
-            pcall(function()
-                Window:Unload()
-            end)
+        if Window then
+            Window.Unloaded = true
+
+            if Window.Frame then
+                pcall(function()
+                    Window.Frame:Destroy()
+                end)
+            end
+
+            if Window.Gui then
+                pcall(function()
+                    Window.Gui:Destroy()
+                end)
+            end
         end
     end
 
@@ -2623,15 +2615,6 @@ function Library:Unload()
     end
 
     table.clear(Notifications)
-
-    for _, Window in ipairs(self.Windows) do
-        if Window and Window.Gui then
-            pcall(function()
-                Window.Gui:Destroy()
-            end)
-        end
-    end
-
     table.clear(self.Toggles)
     table.clear(self.Options)
     table.clear(self.Labels)
