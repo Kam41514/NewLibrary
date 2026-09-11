@@ -57,7 +57,7 @@ Library.Theme = {
     Background = Color3.fromRGB(4, 4, 5),
     Sidebar = Color3.fromRGB(7, 7, 8),
     Panel = Color3.fromRGB(9, 9, 11),
-    Element = Color3.fromRGB(14, 14, 17),
+    Element = Library.Theme.ElementHover,
     ElementHover = Color3.fromRGB(19, 19, 23),
     Selected = Color3.fromRGB(17, 17, 20),
 
@@ -89,6 +89,12 @@ Library.Windows = {}
 
 Library.Unloaded = false
 Library.CurrentWindow = nil
+Library._ThemeCallbacks = {}
+
+function Library:RegisterThemeCallback(Callback)
+    table.insert(self._ThemeCallbacks, Callback)
+    return Callback
+end
 
 --//==================================================
 --// HELPERS
@@ -1511,12 +1517,12 @@ function WindowMethods:AddTab(Name)
         if self.ActiveTab ~= Tab then
             Tween(TabButton, 0.12, {
                 BackgroundColor3 =
-                    Color3.fromRGB(14, 14, 17)
+                    Library.Theme.ElementHover
             })
 
             Tween(TabText, 0.12, {
                 TextColor3 =
-                    Color3.fromRGB(240, 240, 244)
+                    Library.Theme.TextBright
             })
         end
     end)
@@ -1538,7 +1544,7 @@ function WindowMethods:AddTab(Name)
     TabButton.MouseButton1Click:Connect(Select)
 
     if not self.ActiveTab then
-        task.defer(Select)
+        Select()
     end
 
     return Tab
@@ -1980,13 +1986,13 @@ function Library:RefreshTheme()
                     if Object.Name == "MainFrame" then
                         Object.BackgroundColor3 = Library.Theme.Background
                     elseif Object.Name == "TopBar" then
-                        Object.BackgroundColor3 = Color3.fromRGB(8, 8, 9)
+                        Object.BackgroundColor3 = Library.Theme.Panel
                     elseif Object.Name == "Explorer" or Object.Name == "Modules" then
                         Object.BackgroundColor3 = Library.Theme.Sidebar
                     elseif Object.Name == "Content" then
                         Object.BackgroundColor3 = Library.Theme.Background
                     elseif Object.Name == "SearchBox" then
-                        Object.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
+                        Object.BackgroundColor3 = Library.Theme.Element
                     elseif Object.Name == "Header" then
                         Object.TextColor3 = Library.Theme.TextBright
                     elseif Object.Name == "Text" and Object:IsA("TextLabel") then
@@ -2042,6 +2048,10 @@ function Library:RefreshTheme()
                 label.TextColor3 = Toggle.Value and Library.Theme.TextBright or Library.Theme.Text
             end
         end)
+    end
+
+    for _, Callback in ipairs(Library._ThemeCallbacks) do
+        pcall(Callback, Library.Theme)
     end
 end
 
