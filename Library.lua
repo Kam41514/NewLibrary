@@ -93,6 +93,10 @@ Library.CurrentWindow = nil
 Library._ThemeCallbacks = {}
 Library._UnloadCallbacks = {}
 
+local TooltipGui
+local ActiveTooltip
+local TooltipToken = 0
+
 function Library:RegisterThemeCallback(Callback)
     table.insert(self._ThemeCallbacks, Callback)
     return Callback
@@ -122,6 +126,16 @@ end
 --// Show / hide the main MoonHub GUI without destroying it.
 function Library:SetVisible(Visible)
     Visible = Visible == true
+
+    if not Visible then
+        if TooltipGui then
+            TooltipToken = TooltipToken + 1
+            ActiveTooltip = nil
+            pcall(function()
+                TooltipGui:ClearAllChildren()
+            end)
+        end
+    end
 
     for _, Window in ipairs(self.Windows) do
         if Window and Window.Gui and Window.Gui.Parent then
@@ -212,10 +226,6 @@ local function GetValue(Options, Key, Default)
     return Default
 end
 
-local TooltipGui
-local ActiveTooltip
-local TooltipToken = 0
-
 local function CreateTooltipGui()
     if TooltipGui and TooltipGui.Parent then
         return
@@ -237,18 +247,18 @@ local function HideTooltip()
     if ActiveTooltip then
         local Card = ActiveTooltip
         ActiveTooltip = nil
-        Tween(Card, 0.1, {
+        Tween(Card, 0.08, {
             BackgroundTransparency = 1,
         })
 
         local TextLabel = Card:FindFirstChild("Text")
         if TextLabel then
-            Tween(TextLabel, 0.1, {
+            Tween(TextLabel, 0.08, {
                 TextTransparency = 1,
             })
         end
 
-        task.delay(0.11, function()
+        task.delay(0.09, function()
             if Card and Card.Parent and Card ~= ActiveTooltip then
                 Card:Destroy()
             end
@@ -256,8 +266,43 @@ local function HideTooltip()
     end
 end
 
+local function UpdateTooltipPosition()
+    if not ActiveTooltip or not ActiveTooltip.Parent then
+        return
+    end
+
+    local Camera = workspace.CurrentCamera
+    if not Camera then
+        return
+    end
+
+    local MousePosition = UserInputService:GetMouseLocation()
+    local ScreenSize = Camera.ViewportSize
+    local Card = ActiveTooltip
+
+    local X = MousePosition.X + 12
+    local Y = MousePosition.Y + 16
+
+    if X + Card.AbsoluteSize.X > ScreenSize.X - 6 then
+        X = MousePosition.X - Card.AbsoluteSize.X - 12
+    end
+
+    if Y + Card.AbsoluteSize.Y > ScreenSize.Y - 6 then
+        Y = MousePosition.Y - Card.AbsoluteSize.Y - 12
+    end
+
+    X = math.clamp(X, 6, math.max(6, ScreenSize.X - Card.AbsoluteSize.X - 6))
+    Y = math.clamp(Y, 6, math.max(6, ScreenSize.Y - Card.AbsoluteSize.Y - 6))
+
+    Card.Position = UDim2.fromOffset(X, Y)
+end
+
 local function ShowTooltip(Target, Text)
     if not Target or not Target.Parent then
+        return
+    end
+
+    if not Library:IsVisible() then
         return
     end
 
@@ -276,7 +321,7 @@ local function ShowTooltip(Target, Text)
         AutomaticSize = Enum.AutomaticSize.XY,
         Size = UDim2.new(0, 0, 0, 0),
         BackgroundColor3 = Library.Theme.Panel,
-        BackgroundTransparency = 0.08,
+        BackgroundTransparency = 1,
         BorderSizePixel = 0,
         ZIndex = 1000,
         Parent = TooltipGui,
@@ -308,8 +353,6 @@ local function ShowTooltip(Target, Text)
         Parent = Card,
     })
 
-    Card.BackgroundTransparency = 1
-    TextLabel.TextTransparency = 1
     ActiveTooltip = Card
 
     task.defer(function()
@@ -317,25 +360,23 @@ local function ShowTooltip(Target, Text)
             return
         end
 
-        local Position = Target.AbsolutePosition
-        local Size = Target.AbsoluteSize
-        local ScreenSize = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
-
-        local X = Position.X + Size.X + 8
-        local Y = Position.Y + math.floor(Size.Y / 2) - math.floor(Card.AbsoluteSize.Y / 2)
-
-        if X + Card.AbsoluteSize.X > ScreenSize.X - 6 then
-            X = Position.X - Card.AbsoluteSize.X - 8
+        if not Library:IsVisible() then
+            if Card.Parent then
+                Card:Destroy()
+            end
+            if ActiveTooltip == Card then
+                ActiveTooltip = nil
+            end
+            return
         end
 
-        Y = math.clamp(Y, 6, ScreenSize.Y - Card.AbsoluteSize.Y - 6)
-        Card.Position = UDim2.fromOffset(X, Y)
+        UpdateTooltipPosition()
 
-        Tween(Card, 0.12, {
+        Tween(Card, 0.1, {
             BackgroundTransparency = 0.08,
         })
 
-        Tween(TextLabel, 0.12, {
+        Tween(TextLabel, 0.1, {
             TextTransparency = 0,
         })
     end)
@@ -357,12 +398,12 @@ local function AttachTooltip(Target, Text)
         HoverToken = HoverToken + 1
         local Token = HoverToken
 
-        task.delay(0.35, function()
+        task.delay(0.25, function()
             if Token ~= HoverToken then
                 return
             end
 
-            if Target and Target.Parent then
+            if Target and Target.Parent and Library:IsVisible() then
                 ShowTooltip(Target, TooltipText)
             end
         end)
@@ -382,6 +423,14 @@ local function AttachTooltip(Target, Text)
 
     return EnterConnection, LeaveConnection
 end
+
+UserInputService.InputChanged:Connect(function(Input)
+    if Input.UserInputType == Enum.UserInputType.MouseMovement then
+        if ActiveTooltip and ActiveTooltip.Parent and Library:IsVisible() then
+            UpdateTooltipPosition()
+        end
+    end
+end)
 
 --//==================================================
 --// NOTIFICATIONS
@@ -2688,6 +2737,19 @@ end
 
 function Library:RefreshTheme()
     local Theme = Library.Theme
+
+    if ActiveTooltip and ActiveTooltip.Parent then
+        ActiveTooltip.BackgroundColor3 = Theme.Panel
+        local TooltipStroke = ActiveTooltip:FindFirstChildOfClass("UIStroke")
+        if TooltipStroke then
+            TooltipStroke.Color = Theme.Outline
+        end
+
+        local TooltipText = ActiveTooltip:FindFirstChild("Text")
+        if TooltipText and TooltipText:IsA("TextLabel") then
+            TooltipText.TextColor3 = Theme.Text
+        end
+    end
 
     local function ApplyStroke(Object, Color, Transparency)
         for _, Child in ipairs(Object:GetChildren()) do
