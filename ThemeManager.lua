@@ -10,9 +10,6 @@
 
     This ThemeManager adds:
         - Built-in themes
-        - Save / Load theme
-        - Delete theme
-        - List themes
         - Apply theme
         - Set accent
         - BuildThemeSection(Tab)
@@ -339,11 +336,8 @@ function ThemeManager:ApplyTheme(Name)
 
     local Copy = {}
     for Key, Value in pairs(Theme) do Copy[Key] = Value end
-    self.Library:SetTheme(Copy)
     self.CurrentTheme = Name
-    if self.Library.RefreshTheme then
-        self.Library:RefreshTheme()
-    end
+    self.Library:SetTheme(Copy)
     return true
 end
 
@@ -481,11 +475,8 @@ function ThemeManager:Load(Name)
 
     local Theme = DeserializeTheme(Data)
 
-    self.Library:SetTheme(Theme)
     self.CurrentTheme = Name
-    if self.Library.RefreshTheme then
-        self.Library:RefreshTheme()
-    end
+    self.Library:SetTheme(Theme)
 
     if self.Library.Notify then
         self.Library:Notify({
