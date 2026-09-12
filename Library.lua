@@ -139,8 +139,49 @@ function Library:SetVisible(Visible)
 
     for _, Window in ipairs(self.Windows) do
         if Window and Window.Gui and Window.Gui.Parent then
+            if not Visible and Window.ActiveTab then
+                Window.LastTabName = Window.ActiveTab.Name
+            end
+
             Window.Gui.Enabled = Visible
             Window.Visible = Visible
+
+            if Visible then
+                local RestoreTab = nil
+
+                if Window.LastTabName then
+                    RestoreTab = Window.Tabs[Window.LastTabName]
+                end
+
+                if not RestoreTab then
+                    for _, Tab in pairs(Window.Tabs) do
+                        RestoreTab = Tab
+                        break
+                    end
+                end
+
+                if RestoreTab then
+                    for _, Tab in pairs(Window.Tabs) do
+                        local IsActive = Tab == RestoreTab
+
+                        Tab.Page.Visible = IsActive
+                        Tab.Button.BackgroundColor3 = IsActive
+                            and Library.Theme.Selected
+                            or Library.Theme.Element
+
+                        local TabText = Tab.Button:FindFirstChild("Text")
+                        if TabText then
+                            TabText.TextColor3 = IsActive
+                                and Library.Theme.TextBright
+                                or Library.Theme.TextDim
+                        end
+                    end
+
+                    Window.ActiveTab = RestoreTab
+                    Window.LastTabName = RestoreTab.Name
+                    Window:ApplySearch()
+                end
+            end
         end
     end
 
@@ -2235,6 +2276,7 @@ function WindowMethods:AddTab(Name)
         end
 
         self.ActiveTab = Tab
+        self.LastTabName = Tab.Name
 
         Tab.Page.Visible = true
         TabButton.BackgroundColor3 =
@@ -2578,6 +2620,7 @@ function Library:CreateWindow(Config)
         Content = Content,
         Tabs = {},
         ActiveTab = nil,
+        LastTabName = nil,
         Visible = true,
         Unloaded = false,
         SearchText = "",
