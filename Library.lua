@@ -212,6 +212,177 @@ local function GetValue(Options, Key, Default)
     return Default
 end
 
+local TooltipGui
+local ActiveTooltip
+local TooltipToken = 0
+
+local function CreateTooltipGui()
+    if TooltipGui and TooltipGui.Parent then
+        return
+    end
+
+    TooltipGui = New("ScreenGui", {
+        Name = "MoonHubTooltip",
+        ResetOnSpawn = false,
+        IgnoreGuiInset = true,
+        ZIndexBehavior = Enum.ZIndexBehavior.Global,
+        DisplayOrder = 1000,
+        Parent = PlayerGui,
+    })
+end
+
+local function HideTooltip()
+    TooltipToken = TooltipToken + 1
+
+    if ActiveTooltip then
+        local Card = ActiveTooltip
+        ActiveTooltip = nil
+        Tween(Card, 0.1, {
+            BackgroundTransparency = 1,
+        })
+
+        local TextLabel = Card:FindFirstChild("Text")
+        if TextLabel then
+            Tween(TextLabel, 0.1, {
+                TextTransparency = 1,
+            })
+        end
+
+        task.delay(0.11, function()
+            if Card and Card.Parent and Card ~= ActiveTooltip then
+                Card:Destroy()
+            end
+        end)
+    end
+end
+
+local function ShowTooltip(Target, Text)
+    if not Target or not Target.Parent then
+        return
+    end
+
+    Text = tostring(Text or "")
+    if Text == "" then
+        return
+    end
+
+    HideTooltip()
+    TooltipToken = TooltipToken + 1
+    local Token = TooltipToken
+    CreateTooltipGui()
+
+    local Card = New("Frame", {
+        Name = "Tooltip",
+        AutomaticSize = Enum.AutomaticSize.XY,
+        Size = UDim2.new(0, 0, 0, 0),
+        BackgroundColor3 = Library.Theme.Panel,
+        BackgroundTransparency = 0.08,
+        BorderSizePixel = 0,
+        ZIndex = 1000,
+        Parent = TooltipGui,
+    })
+
+    Corner(Card, 5)
+    Stroke(Card, Library.Theme.Outline, 0.1, 1)
+
+    local TextLabel = New("TextLabel", {
+        Name = "Text",
+        AutomaticSize = Enum.AutomaticSize.XY,
+        Size = UDim2.new(0, 0, 0, 0),
+        BackgroundTransparency = 1,
+        Text = Text,
+        TextColor3 = Library.Theme.Text,
+        TextSize = 10,
+        Font = Enum.Font.GothamMedium,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Center,
+        ZIndex = 1001,
+        Parent = Card,
+    })
+
+    New("UIPadding", {
+        PaddingLeft = UDim.new(0, 9),
+        PaddingRight = UDim.new(0, 9),
+        PaddingTop = UDim.new(0, 6),
+        PaddingBottom = UDim.new(0, 6),
+        Parent = Card,
+    })
+
+    Card.BackgroundTransparency = 1
+    TextLabel.TextTransparency = 1
+    ActiveTooltip = Card
+
+    task.defer(function()
+        if Token ~= TooltipToken or not Card.Parent or not Target.Parent then
+            return
+        end
+
+        local Position = Target.AbsolutePosition
+        local Size = Target.AbsoluteSize
+        local ScreenSize = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
+
+        local X = Position.X + Size.X + 8
+        local Y = Position.Y + math.floor(Size.Y / 2) - math.floor(Card.AbsoluteSize.Y / 2)
+
+        if X + Card.AbsoluteSize.X > ScreenSize.X - 6 then
+            X = Position.X - Card.AbsoluteSize.X - 8
+        end
+
+        Y = math.clamp(Y, 6, ScreenSize.Y - Card.AbsoluteSize.Y - 6)
+        Card.Position = UDim2.fromOffset(X, Y)
+
+        Tween(Card, 0.12, {
+            BackgroundTransparency = 0.08,
+        })
+
+        Tween(TextLabel, 0.12, {
+            TextTransparency = 0,
+        })
+    end)
+end
+
+local function AttachTooltip(Target, Text)
+    if not Target then
+        return nil
+    end
+
+    local TooltipText = tostring(Text or "")
+    if TooltipText == "" then
+        return nil
+    end
+
+    local HoverToken = 0
+
+    local EnterConnection = Target.MouseEnter:Connect(function()
+        HoverToken = HoverToken + 1
+        local Token = HoverToken
+
+        task.delay(0.35, function()
+            if Token ~= HoverToken then
+                return
+            end
+
+            if Target and Target.Parent then
+                ShowTooltip(Target, TooltipText)
+            end
+        end)
+    end)
+
+    local LeaveConnection = Target.MouseLeave:Connect(function()
+        HoverToken = HoverToken + 1
+        HideTooltip()
+    end)
+
+    Target.AncestryChanged:Connect(function(_, Parent)
+        if not Parent then
+            HoverToken = HoverToken + 1
+            HideTooltip()
+        end
+    end)
+
+    return EnterConnection, LeaveConnection
+end
+
 --//==================================================
 --// NOTIFICATIONS
 --//==================================================
@@ -432,7 +603,33 @@ function ElementMethods:SetVisible(Value)
 end
 
 function ElementMethods:AddTooltip(Text)
-    self.Tooltip = Text
+    self.Tooltip = tostring(Text or "")
+
+    if self.Container then
+        if self._TooltipConnections then
+            for _, Connection in ipairs(self._TooltipConnections) do
+                pcall(function()
+                    Connection:Disconnect()
+                end)
+            end
+        end
+
+        self._TooltipConnections = {}
+
+        local EnterConnection, LeaveConnection = AttachTooltip(
+            self.Container,
+            self.Tooltip
+        )
+
+        if EnterConnection then
+            table.insert(self._TooltipConnections, EnterConnection)
+        end
+
+        if LeaveConnection then
+            table.insert(self._TooltipConnections, LeaveConnection)
+        end
+    end
+
     return self
 end
 
@@ -516,9 +713,14 @@ local function CreateToggle(Groupbox, Identifier, Info)
         Container = Container,
         Callback = Options.Callback or function() end,
         Changed = Options.Changed or function() end,
+        Tooltip = Options.Tooltip,
     }
 
     setmetatable(Toggle, {__index = ElementMethods})
+
+    if Options.Tooltip then
+        Toggle:AddTooltip(Options.Tooltip)
+    end
 
     local function UpdateVisual()
         if Value then
@@ -556,11 +758,23 @@ local function CreateToggle(Groupbox, Identifier, Info)
         UpdateVisual()
 
         task.spawn(function()
-            self.Callback(Value)
+            local Success, Error = pcall(function()
+                self.Callback(Value)
+            end)
+
+            if not Success then
+                warn("[MoonHub] Toggle callback error:", Error)
+            end
         end)
 
         task.spawn(function()
-            self.Changed(Value)
+            local Success, Error = pcall(function()
+                self.Changed(Value)
+            end)
+
+            if not Success then
+                warn("[MoonHub] Toggle Changed error:", Error)
+            end
         end)
     end
 
@@ -1215,9 +1429,14 @@ local function CreateButton(Groupbox, Identifier, Info)
         Text = Text,
         Container = Container,
         Callback = Callback,
+        Tooltip = Options.Tooltip,
     }
 
     setmetatable(Button, {__index = ElementMethods})
+
+    if Options.Tooltip then
+        Button:AddTooltip(Options.Tooltip)
+    end
 
     Container.MouseEnter:Connect(function()
         Tween(Container, 0.12, {
@@ -2541,6 +2760,9 @@ function Library:RefreshTheme()
             ApplyStroke(Object, Theme.Outline, 0)
         elseif Object.Name == "ThumbStroke" and Object:IsA("UIStroke") then
             Object.Color = Theme.Outline
+        elseif Object.Name == "Tooltip" then
+            Object.BackgroundColor3 = Theme.Panel
+            ApplyStroke(Object, Theme.Outline, 0.1)
         elseif Object.Name == "Notification" then
             Object.BackgroundColor3 = Theme.Panel
             ApplyStroke(Object, Theme.OutlineSoft, 0.18)
@@ -2564,7 +2786,7 @@ function Library:RefreshTheme()
     end
 
     for _, Gui in ipairs(PlayerGui:GetChildren()) do
-        if Gui.Name == "MoonHub" or Gui.Name == "MoonHubNotifications" then
+        if Gui.Name == "MoonHub" or Gui.Name == "MoonHubNotifications" or Gui.Name == "MoonHubTooltip" then
             for _, Object in ipairs(Gui:GetDescendants()) do
                 pcall(function()
                     ApplyElement(Object)
@@ -2822,6 +3044,14 @@ function Library:Unload()
         end)
         NotificationGui = nil
         NotificationList = nil
+    end
+
+    if TooltipGui then
+        pcall(function()
+            TooltipGui:Destroy()
+        end)
+        TooltipGui = nil
+        ActiveTooltip = nil
     end
 
     table.clear(Notifications)
