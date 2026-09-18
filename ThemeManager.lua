@@ -34,30 +34,29 @@ ThemeManager.StartupTheme = "MoonHub"
 
 ThemeManager.Themes = {
     MoonHub = {
-        -- Dark values taken directly from the supplied MoonHub gradient.
+        -- Dark navy palette based on the supplied GUI's actual colors.
         Background = Color3.fromRGB(7, 25, 46),
         Sidebar = Color3.fromRGB(8, 29, 49),
         Panel = Color3.fromRGB(9, 32, 54),
 
-        Element = Color3.fromRGB(25, 59, 86),
-        ElementHover = Color3.fromRGB(42, 91, 120),
-        Selected = Color3.fromRGB(31, 72, 100),
+        Element = Color3.fromRGB(18, 43, 64),
+        ElementHover = Color3.fromRGB(28, 62, 84),
+        Selected = Color3.fromRGB(24, 54, 76),
 
-        -- Supplied GUI outline colors.
-        Outline = Color3.fromRGB(100, 140, 165),
-        OutlineSoft = Color3.fromRGB(72, 112, 145),
+        Outline = Color3.fromRGB(55, 88, 110),
+        OutlineSoft = Color3.fromRGB(43, 72, 92),
 
         Text = Color3.fromRGB(255, 255, 255),
         TextDim = Color3.fromRGB(190, 208, 222),
         TextBright = Color3.fromRGB(255, 255, 255),
         Placeholder = Color3.fromRGB(165, 185, 200),
 
-        ToggleOff = Color3.fromRGB(25, 59, 86),
-        ToggleOn = Color3.fromRGB(52, 91, 116),
+        ToggleOff = Color3.fromRGB(18, 43, 64),
+        ToggleOn = Color3.fromRGB(28, 62, 84),
         KnobOff = Color3.fromRGB(235, 243, 249),
 
-        Accent = Color3.fromRGB(145, 92, 255),
-        AccentSoft = Color3.fromRGB(110, 70, 200),
+        Accent = Color3.fromRGB(28, 62, 84),
+        AccentSoft = Color3.fromRGB(24, 54, 76),
 
         Success = Color3.fromRGB(120, 220, 150),
         Warning = Color3.fromRGB(235, 190, 90),
