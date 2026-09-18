@@ -55,24 +55,29 @@ local Library = {}
 --//==================================================
 
 Library.DefaultTheme = {
-    Background = Color3.fromRGB(13, 39, 65),
-    Sidebar = Color3.fromRGB(11, 35, 57),
-    Panel = Color3.fromRGB(10, 32, 53),
-    Element = Color3.fromRGB(30, 68, 96),
-    ElementHover = Color3.fromRGB(38, 82, 111),
-    Selected = Color3.fromRGB(35, 78, 106),
+    -- MoonHub: dark base taken from the supplied GUI's actual gradient colors.
+    -- The UI stays dark instead of using a bright flat blue.
+    Background = Color3.fromRGB(7, 25, 46),
+    Sidebar = Color3.fromRGB(8, 29, 49),
+    Panel = Color3.fromRGB(9, 32, 54),
 
-    Outline = Color3.fromRGB(82, 116, 138),
-    OutlineSoft = Color3.fromRGB(61, 94, 117),
+    Element = Color3.fromRGB(25, 59, 86),
+    ElementHover = Color3.fromRGB(42, 91, 120),
+    Selected = Color3.fromRGB(31, 72, 100),
+
+    -- Outline values match the supplied GUI:
+    -- main/module outlines are around 72,112,145 and module buttons 100,140,165.
+    Outline = Color3.fromRGB(100, 140, 165),
+    OutlineSoft = Color3.fromRGB(72, 112, 145),
 
     Text = Color3.fromRGB(255, 255, 255),
-    TextDim = Color3.fromRGB(204, 220, 232),
+    TextDim = Color3.fromRGB(190, 208, 222),
     TextBright = Color3.fromRGB(255, 255, 255),
-    Placeholder = Color3.fromRGB(150, 171, 187),
+    Placeholder = Color3.fromRGB(165, 185, 200),
 
-    ToggleOff = Color3.fromRGB(30, 68, 96),
+    ToggleOff = Color3.fromRGB(25, 59, 86),
     ToggleOn = Color3.fromRGB(52, 91, 116),
-    KnobOff = Color3.fromRGB(225, 235, 242),
+    KnobOff = Color3.fromRGB(235, 243, 249),
 
     Accent = Color3.fromRGB(145, 92, 255),
     AccentSoft = Color3.fromRGB(110, 70, 200),
@@ -2979,6 +2984,10 @@ function Library:RefreshTheme()
             Object.BackgroundColor3 = Theme.Element
         elseif Object.Name == "OptionsFrame" then
             Object.BackgroundColor3 = Theme.Panel
+        elseif Object.Name == "DropdownButton" and Object:IsA("TextButton") then
+            Object.BackgroundColor3 = Theme.Element
+            Object.TextColor3 = Theme.Text
+            ApplyStroke(Object, Theme.Outline, 0.25)
         elseif Object.Name == "Divider" then
             Object.BackgroundColor3 = Theme.Outline
         elseif Object:IsA("TextBox") then
@@ -3015,6 +3024,34 @@ function Library:RefreshTheme()
                 end)
             end
         end
+    end
+
+    -- Hard refresh dropdowns so no dropdown can keep the previous theme.
+    for _, Dropdown in pairs(Library.Options) do
+        pcall(function()
+            if Dropdown.Type == "Dropdown" then
+                local Container = Dropdown.Container
+                local Button = Container and Container:FindFirstChild("DropdownButton")
+                local OptionsFrame = Container and Container:FindFirstChild("OptionsFrame")
+                if Button then
+                    Button.BackgroundColor3 = Theme.Element
+                    Button.TextColor3 = Theme.Text
+                    ApplyStroke(Button, Theme.Outline, 0.25)
+                    local Label = Button:FindFirstChildOfClass("TextLabel")
+                    if Label then Label.TextColor3 = Theme.Text end
+                end
+                if OptionsFrame then
+                    OptionsFrame.BackgroundColor3 = Theme.Panel
+                    for _, Option in ipairs(OptionsFrame:GetChildren()) do
+                        if Option:IsA("TextButton") and string.sub(Option.Name, 1, 7) == "Option_" then
+                            Option.BackgroundColor3 = Theme.Panel
+                            Option.TextColor3 = Theme.Text
+                            ApplyStroke(Option, Theme.OutlineSoft, 0.28)
+                        end
+                    end
+                end
+            end
+        end)
     end
 
     for _, Toggle in pairs(Library.Toggles) do
