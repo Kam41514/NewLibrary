@@ -83,6 +83,7 @@ Background = Color3.fromRGB(7, 25, 46),
     Success = Color3.fromRGB(120, 220, 150),
     Warning = Color3.fromRGB(235, 190, 90),
     Error = Color3.fromRGB(235, 95, 95),
+    GradientEnabled = true,
 }
 
 -- Always start from the exact MoonHub palette.
@@ -2429,6 +2430,123 @@ end
 --// CREATE WINDOW
 --//==================================================
 
+--//==================================================
+--// MOONHUB BACKGROUND VISUALS
+--//==================================================
+
+local function SetMoonHubGradient(Object, Keypoints, Rotation)
+    if not Object then
+        return
+    end
+
+    local Gradient = Object:FindFirstChild("MoonHubGradient")
+    if not Gradient then
+        Gradient = Instance.new("UIGradient")
+        Gradient.Name = "MoonHubGradient"
+        Gradient.Parent = Object
+    end
+
+    Gradient.Rotation = Rotation or 35
+    Gradient.Color = ColorSequence.new(Keypoints)
+    Gradient.Enabled = Library.Theme.GradientEnabled == true
+end
+
+local function EnsureMoonHubStars(Frame)
+    if not Frame then
+        return
+    end
+
+    local Folder = Frame:FindFirstChild("MoonHubStars")
+    if not Folder then
+        Folder = Instance.new("Folder")
+        Folder.Name = "MoonHubStars"
+        Folder.Parent = Frame
+
+        local RandomObject = Random.new(41514)
+        for Index = 1, 100 do
+            local Star = Instance.new("Frame")
+            Star.Name = "Star" .. Index
+            Star.Size = UDim2.fromOffset(
+                RandomObject:NextInteger(1, 2),
+                RandomObject:NextInteger(1, 2)
+            )
+            Star.Position = UDim2.new(
+                RandomObject:NextNumber(), 0,
+                RandomObject:NextNumber(), 0
+            )
+            Star.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            Star.BackgroundTransparency = RandomObject:NextNumber(0.55, 0.90)
+            Star.BorderSizePixel = 0
+            Star.ZIndex = 0
+            Star.Parent = Folder
+        end
+    end
+
+    Folder.Visible = Library.Theme.GradientEnabled == true
+end
+
+local function RefreshMoonHubBackgrounds(Frame, TopBar, Explorer, Modules, Content, SearchBox)
+    if not Frame then
+        return
+    end
+
+    local Enabled = Library.Theme.GradientEnabled == true
+
+    SetMoonHubGradient(Frame, {
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(7, 25, 46)),
+        ColorSequenceKeypoint.new(0.20, Color3.fromRGB(10, 36, 61)),
+        ColorSequenceKeypoint.new(0.42, Color3.fromRGB(18, 57, 89)),
+        ColorSequenceKeypoint.new(0.62, Color3.fromRGB(20, 62, 95)),
+        ColorSequenceKeypoint.new(0.80, Color3.fromRGB(14, 46, 74)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(7, 25, 46)),
+    }, 35)
+
+    SetMoonHubGradient(TopBar, {
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(9, 32, 54)),
+        ColorSequenceKeypoint.new(0.20, Color3.fromRGB(12, 43, 69)),
+        ColorSequenceKeypoint.new(0.42, Color3.fromRGB(20, 59, 89)),
+        ColorSequenceKeypoint.new(0.62, Color3.fromRGB(22, 64, 96)),
+        ColorSequenceKeypoint.new(0.80, Color3.fromRGB(15, 48, 75)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 30, 51)),
+    }, 35)
+
+    local SidebarGradient = {
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(8, 29, 49)),
+        ColorSequenceKeypoint.new(0.20, Color3.fromRGB(11, 39, 62)),
+        ColorSequenceKeypoint.new(0.42, Color3.fromRGB(17, 52, 80)),
+        ColorSequenceKeypoint.new(0.62, Color3.fromRGB(19, 58, 87)),
+        ColorSequenceKeypoint.new(0.80, Color3.fromRGB(13, 44, 70)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 29, 49)),
+    }
+
+    SetMoonHubGradient(Explorer, SidebarGradient, 35)
+    SetMoonHubGradient(Modules, SidebarGradient, 35)
+
+    SetMoonHubGradient(Content, {
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(7, 25, 46)),
+        ColorSequenceKeypoint.new(0.50, Color3.fromRGB(14, 46, 74)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(7, 25, 46)),
+    }, 35)
+
+    SetMoonHubGradient(SearchBox, {
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 34, 55)),
+        ColorSequenceKeypoint.new(0.35, Color3.fromRGB(15, 49, 75)),
+        ColorSequenceKeypoint.new(0.65, Color3.fromRGB(22, 65, 95)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(11, 37, 59)),
+    }, 35)
+
+    for _, Object in ipairs({Frame, TopBar, Explorer, Modules, Content, SearchBox}) do
+        if Object then
+            local Gradient = Object:FindFirstChild("MoonHubGradient")
+            if Gradient then
+                Gradient.Enabled = Enabled
+            end
+        end
+    end
+
+    EnsureMoonHubStars(Frame)
+end
+
 function Library:CreateWindow(Config)
     Config = Config or {}
 
@@ -2466,7 +2584,9 @@ function Library:CreateWindow(Config)
             ),
         BackgroundColor3 =
             Library.Theme.Background,
+        BackgroundTransparency = 0.03,
         BorderSizePixel = 0,
+        ClipsDescendants = true,
         Parent = Gui,
     })
 
@@ -2477,6 +2597,8 @@ function Library:CreateWindow(Config)
         0.1,
         1
     )
+
+    EnsureMoonHubStars(Frame)
 
     local TopBar = New("Frame", {
         Name = "TopBar",
@@ -2716,6 +2838,15 @@ function Library:CreateWindow(Config)
         Parent = Frame,
     })
 
+    RefreshMoonHubBackgrounds(
+        Frame,
+        TopBar,
+        SearchArea,
+        Modules,
+        Content,
+        SearchBox
+    )
+
     local Window = {
         Title = Title,
         Footer = Footer,
@@ -2888,6 +3019,27 @@ end
 
 function Library:RefreshTheme()
     local Theme = Library.Theme
+
+    for _, Gui in ipairs(PlayerGui:GetChildren()) do
+        if Gui.Name == "MoonHub" then
+            local MainFrame = Gui:FindFirstChild("MainFrame")
+            if MainFrame then
+                local TopBar = MainFrame:FindFirstChild("TopBar")
+                local Explorer = MainFrame:FindFirstChild("Explorer")
+                local Modules = MainFrame:FindFirstChild("Modules")
+                local Content = MainFrame:FindFirstChild("Content")
+                local SearchBox = Explorer and Explorer:FindFirstChild("SearchBox")
+                RefreshMoonHubBackgrounds(
+                    MainFrame,
+                    TopBar,
+                    Explorer,
+                    Modules,
+                    Content,
+                    SearchBox
+                )
+            end
+        end
+    end
 
     if ActiveTooltip and ActiveTooltip.Parent then
         ActiveTooltip.BackgroundColor3 = Theme.Panel
