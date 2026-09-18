@@ -84,6 +84,7 @@ Background = Color3.fromRGB(7, 25, 46),
     Warning = Color3.fromRGB(235, 190, 90),
     Error = Color3.fromRGB(235, 95, 95),
     GradientEnabled = true,
+    StarsEnabled = true,
 }
 
 -- Always start from the exact MoonHub palette.
@@ -236,6 +237,24 @@ local function Corner(Object, Radius)
 end
 
 local function Stroke(Object, Color, Transparency, Thickness)
+    if not Object then
+        return nil
+    end
+
+    -- Roblox's native BorderSizePixel can create a second hard line beside
+    -- the UIStroke. MoonHub uses UIStroke only for its outlines.
+    pcall(function()
+        Object.BorderSizePixel = 0
+    end)
+
+    -- Never leave two Outline strokes on the same object. That was the source
+    -- of the dark/light parallel-line artifact around some controls.
+    for _, Child in ipairs(Object:GetChildren()) do
+        if Child:IsA("UIStroke") and Child.Name == "Outline" then
+            Child:Destroy()
+        end
+    end
+
     local S = Instance.new("UIStroke")
     S.Name = "Outline"
     S.Color = Color or Library.Theme.Outline
@@ -2482,7 +2501,8 @@ local function EnsureMoonHubStars(Frame)
         end
     end
 
-    local StarsVisible = Library.Theme.GradientEnabled == true
+    -- Stars are a MoonHub-only visual. Do not tie them to generic gradient state.
+    local StarsVisible = Library.Theme.StarsEnabled == true
     for _, Star in ipairs(Folder:GetChildren()) do
         if Star:IsA("GuiObject") then
             Star.Visible = StarsVisible
@@ -3060,8 +3080,31 @@ function Library:RefreshTheme()
     end
 
     local function ApplyStroke(Object, Color, Transparency)
+        if not Object then
+            return
+        end
+
+        pcall(function()
+            Object.BorderSizePixel = 0
+        end)
+
+        local FirstOutline = nil
         for _, Child in ipairs(Object:GetChildren()) do
             if Child:IsA("UIStroke") then
+                -- Keep intentionally named special strokes such as ThumbStroke
+                -- and CircleStroke, but collapse duplicate generic outlines.
+                if Child.Name == "Outline" then
+                    if FirstOutline then
+                        Child:Destroy()
+                    else
+                        FirstOutline = Child
+                    end
+                end
+            end
+        end
+
+        for _, Child in ipairs(Object:GetChildren()) do
+            if Child:IsA("UIStroke") and (Child.Name == "Outline" or Child.Name == "ThumbStroke" or Child.Name == "CircleStroke") then
                 Child.Color = Color
                 if Transparency ~= nil then
                     Child.Transparency = Transparency
