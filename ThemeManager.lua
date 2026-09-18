@@ -62,6 +62,7 @@ ThemeManager.Themes = {
         Warning = Color3.fromRGB(235, 190, 90),
         Error = Color3.fromRGB(235, 95, 95),
         GradientEnabled = true,
+        StarsEnabled = true,
     },
     Midnight = {
         Background = Color3.fromRGB(3, 5, 10),
@@ -90,6 +91,7 @@ ThemeManager.Themes = {
         Warning = Color3.fromRGB(235, 190, 90),
         Error = Color3.fromRGB(235, 95, 95),
         GradientEnabled = false,
+        StarsEnabled = false,
     },
 
     Crimson = {
@@ -119,6 +121,7 @@ ThemeManager.Themes = {
         Warning = Color3.fromRGB(235, 190, 90),
         Error = Color3.fromRGB(245, 80, 95),
         GradientEnabled = false,
+        StarsEnabled = false,
     },
 
     Emerald = {
@@ -148,6 +151,7 @@ ThemeManager.Themes = {
         Warning = Color3.fromRGB(235, 190, 90),
         Error = Color3.fromRGB(235, 95, 95),
         GradientEnabled = false,
+        StarsEnabled = false,
     },
 
     Rose = {
@@ -177,6 +181,7 @@ ThemeManager.Themes = {
         Warning = Color3.fromRGB(235, 190, 90),
         Error = Color3.fromRGB(240, 90, 110),
         GradientEnabled = false,
+        StarsEnabled = false,
     },
 }
 
