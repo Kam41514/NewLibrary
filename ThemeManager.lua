@@ -34,24 +34,31 @@ ThemeManager.StartupTheme = "MoonHub"
 
 ThemeManager.Themes = {
     MoonHub = {
-        -- Exact core palette from the supplied MoonHub test GUI.
-        Background = Color3.fromRGB(13, 39, 65),
+        -- Dark values taken directly from the supplied MoonHub gradient.
+        Background = Color3.fromRGB(7, 25, 46),
         Sidebar = Color3.fromRGB(8, 29, 49),
-        Panel = Color3.fromRGB(13, 39, 65),
-        Element = Color3.fromRGB(30, 68, 96),
+        Panel = Color3.fromRGB(9, 32, 54),
+
+        Element = Color3.fromRGB(25, 59, 86),
         ElementHover = Color3.fromRGB(42, 91, 120),
-        Selected = Color3.fromRGB(39, 84, 111),
+        Selected = Color3.fromRGB(31, 72, 100),
+
+        -- Supplied GUI outline colors.
         Outline = Color3.fromRGB(100, 140, 165),
         OutlineSoft = Color3.fromRGB(72, 112, 145),
+
         Text = Color3.fromRGB(255, 255, 255),
         TextDim = Color3.fromRGB(190, 208, 222),
         TextBright = Color3.fromRGB(255, 255, 255),
         Placeholder = Color3.fromRGB(165, 185, 200),
-        ToggleOff = Color3.fromRGB(30, 68, 96),
+
+        ToggleOff = Color3.fromRGB(25, 59, 86),
         ToggleOn = Color3.fromRGB(52, 91, 116),
         KnobOff = Color3.fromRGB(235, 243, 249),
+
         Accent = Color3.fromRGB(145, 92, 255),
         AccentSoft = Color3.fromRGB(110, 70, 200),
+
         Success = Color3.fromRGB(120, 220, 150),
         Warning = Color3.fromRGB(235, 190, 90),
         Error = Color3.fromRGB(235, 95, 95),
@@ -684,4 +691,3 @@ function ThemeManager:Init(Library, Folder)
 end
 
 return ThemeManager
-
