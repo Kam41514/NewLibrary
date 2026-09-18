@@ -79,8 +79,8 @@ Library.DefaultTheme = {
     ToggleOn = Color3.fromRGB(52, 91, 116),
     KnobOff = Color3.fromRGB(235, 243, 249),
 
-    Accent = Color3.fromRGB(145, 92, 255),
-    AccentSoft = Color3.fromRGB(110, 70, 200),
+    Accent = Color3.fromRGB(31, 72, 100),
+    AccentSoft = Color3.fromRGB(25, 59, 86),
 
     Success = Color3.fromRGB(120, 220, 150),
     Warning = Color3.fromRGB(235, 190, 90),
