@@ -2482,7 +2482,12 @@ local function EnsureMoonHubStars(Frame)
         end
     end
 
-    Folder.Visible = Library.Theme.GradientEnabled == true
+    local StarsVisible = Library.Theme.GradientEnabled == true
+    for _, Star in ipairs(Folder:GetChildren()) do
+        if Star:IsA("GuiObject") then
+            Star.Visible = StarsVisible
+        end
+    end
 end
 
 local function RefreshMoonHubBackgrounds(Frame, TopBar, Explorer, Modules, Content, SearchBox)
