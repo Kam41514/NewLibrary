@@ -55,24 +55,24 @@ local Library = {}
 --//==================================================
 
 Library.Theme = {
-    Background = Color3.fromRGB(4, 4, 5),
-    Sidebar = Color3.fromRGB(7, 7, 8),
-    Panel = Color3.fromRGB(9, 9, 11),
-    Element = Color3.fromRGB(14, 14, 17),
-    ElementHover = Color3.fromRGB(19, 19, 23),
-    Selected = Color3.fromRGB(17, 17, 20),
+    Background = Color3.fromRGB(7, 25, 46),
+    Sidebar = Color3.fromRGB(8, 29, 49),
+    Panel = Color3.fromRGB(10, 34, 55),
+    Element = Color3.fromRGB(25, 59, 86),
+    ElementHover = Color3.fromRGB(42, 91, 120),
+    Selected = Color3.fromRGB(31, 72, 100),
 
-    Outline = Color3.fromRGB(28, 28, 32),
-    OutlineSoft = Color3.fromRGB(22, 22, 24),
+    Outline = Color3.fromRGB(72, 112, 145),
+    OutlineSoft = Color3.fromRGB(55, 91, 117),
 
-    Text = Color3.fromRGB(235, 235, 240),
-    TextDim = Color3.fromRGB(215, 215, 222),
-    TextBright = Color3.fromRGB(250, 250, 252),
-    Placeholder = Color3.fromRGB(120, 120, 126),
+    Text = Color3.fromRGB(255, 255, 255),
+    TextDim = Color3.fromRGB(205, 220, 232),
+    TextBright = Color3.fromRGB(255, 255, 255),
+    Placeholder = Color3.fromRGB(165, 185, 200),
 
-    ToggleOff = Color3.fromRGB(35, 35, 40),
-    ToggleOn = Color3.fromRGB(85, 85, 92),
-    KnobOff = Color3.fromRGB(190, 190, 195),
+    ToggleOff = Color3.fromRGB(30, 68, 96),
+    ToggleOn = Color3.fromRGB(65, 108, 138),
+    KnobOff = Color3.fromRGB(225, 235, 242),
 
     Accent = Color3.fromRGB(145, 92, 255),
     AccentSoft = Color3.fromRGB(110, 70, 200),
@@ -2477,38 +2477,70 @@ function Library:CreateWindow(Config)
         Parent = TopBar,
     })
 
+    --// Game Name
+    -- Use the current PlaceId instead of game.Name because some executors
+    -- expose game.Name as "UGC"/"Game" instead of the actual place name.
     local GameName = New("TextLabel", {
         Name = "GameName",
         Position = UDim2.new(0, 10, 0, 0),
         Size = UDim2.new(0, 190, 0, 36),
         BackgroundTransparency = 1,
-        Text = game.Name,
+        Text = "Loading...",
         TextColor3 = Library.Theme.TextBright,
         TextSize = 11,
         Font = Enum.Font.GothamBold,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextYAlignment = Enum.TextYAlignment.Center,
         TextTruncate = Enum.TextTruncate.AtEnd,
-        TextStrokeColor3 = Color3.fromRGB(25, 57, 79),
-        TextStrokeTransparency = 0.45,
+        ZIndex = 2,
         Parent = TopBar,
     })
 
     task.spawn(function()
-        local Success, ProductInfo = pcall(function()
-            return MarketplaceService:GetProductInfo(
-                game.PlaceId,
-                Enum.InfoType.Asset
-            )
-        end)
+        local PlaceId = tonumber(game.PlaceId)
+        local FoundName = nil
 
-        if Success
-            and type(ProductInfo) == "table"
-            and ProductInfo.Name
-            and tostring(ProductInfo.Name) ~= ""
-            and GameName
-            and GameName.Parent then
-            GameName.Text = tostring(ProductInfo.Name)
+        if PlaceId and PlaceId > 0 then
+            -- GetProductInfoAsync is the current API. The queried ID is the
+            -- PlaceId (asset type 9), which is what we want for the place name.
+            local Success, Info = pcall(function()
+                return MarketplaceService:GetProductInfoAsync(
+                    PlaceId,
+                    Enum.InfoType.Asset
+                )
+            end)
+
+            if Success and type(Info) == "table" then
+                if tonumber(Info.AssetTypeId) == 9
+                    and type(Info.Name) == "string"
+                    and Info.Name ~= "" then
+                    FoundName = Info.Name
+                end
+            end
+
+            -- Fallback for executors/Roblox versions where the newer
+            -- async method is unavailable.
+            if not FoundName then
+                local OldSuccess, OldInfo = pcall(function()
+                    return MarketplaceService:GetProductInfo(
+                        PlaceId,
+                        Enum.InfoType.Asset
+                    )
+                end)
+
+                if OldSuccess and type(OldInfo) == "table" then
+                    if (OldInfo.AssetTypeId == nil
+                        or tonumber(OldInfo.AssetTypeId) == 9)
+                        and type(OldInfo.Name) == "string"
+                        and OldInfo.Name ~= "" then
+                        FoundName = OldInfo.Name
+                    end
+                end
+            end
+        end
+
+        if GameName and GameName.Parent then
+            GameName.Text = FoundName or "Unknown Game"
         end
     end)
 
