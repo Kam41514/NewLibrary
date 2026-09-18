@@ -55,32 +55,30 @@ local Library = {}
 --//==================================================
 
 Library.DefaultTheme = {
-    -- MoonHub: dark base taken from the supplied GUI's actual gradient colors.
-    -- The UI stays dark instead of using a bright flat blue.
+    -- MoonHub: dark navy palette based on the supplied GUI.
+    -- Keep the base very dark; blue is used only for readable controls.
     Background = Color3.fromRGB(7, 25, 46),
     Sidebar = Color3.fromRGB(8, 29, 49),
     Panel = Color3.fromRGB(9, 32, 54),
 
-    Element = Color3.fromRGB(25, 59, 86),
-    ElementHover = Color3.fromRGB(42, 91, 120),
-    Selected = Color3.fromRGB(31, 72, 100),
+    Element = Color3.fromRGB(18, 43, 64),
+    ElementHover = Color3.fromRGB(28, 62, 84),
+    Selected = Color3.fromRGB(24, 54, 76),
 
-    -- Outline values match the supplied GUI:
-    -- main/module outlines are around 72,112,145 and module buttons 100,140,165.
-    Outline = Color3.fromRGB(100, 140, 165),
-    OutlineSoft = Color3.fromRGB(72, 112, 145),
+    Outline = Color3.fromRGB(55, 88, 110),
+    OutlineSoft = Color3.fromRGB(43, 72, 92),
 
     Text = Color3.fromRGB(255, 255, 255),
     TextDim = Color3.fromRGB(190, 208, 222),
     TextBright = Color3.fromRGB(255, 255, 255),
     Placeholder = Color3.fromRGB(165, 185, 200),
 
-    ToggleOff = Color3.fromRGB(25, 59, 86),
-    ToggleOn = Color3.fromRGB(52, 91, 116),
+    ToggleOff = Color3.fromRGB(18, 43, 64),
+    ToggleOn = Color3.fromRGB(28, 62, 84),
     KnobOff = Color3.fromRGB(235, 243, 249),
 
-    Accent = Color3.fromRGB(31, 72, 100),
-    AccentSoft = Color3.fromRGB(25, 59, 86),
+    Accent = Color3.fromRGB(28, 62, 84),
+    AccentSoft = Color3.fromRGB(24, 54, 76),
 
     Success = Color3.fromRGB(120, 220, 150),
     Warning = Color3.fromRGB(235, 190, 90),
@@ -238,9 +236,16 @@ end
 
 local function Stroke(Object, Color, Transparency, Thickness)
     local S = Instance.new("UIStroke")
+    S.Name = "Outline"
     S.Color = Color or Library.Theme.Outline
     S.Transparency = Transparency or 0
     S.Thickness = Thickness or 1
+    S.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    pcall(function()
+        S.BorderStrokePosition = Enum.BorderStrokePosition.Inner
+        S.BorderOffset = UDim.new(0, 0)
+        S.LineJoinMode = Enum.LineJoinMode.Round
+    end)
     S.Parent = Object
     return S
 end
@@ -2067,7 +2072,7 @@ local function CreateGroupbox(Tab, Name, Side)
     Box:SetAttribute("MoonHubGroupbox", true)
 
     Corner(Box, 7)
-    Stroke(Box, Library.Theme.OutlineSoft, 0.22, 1)
+    Stroke(Box, Library.Theme.OutlineSoft, 0.08, 1)
 
     local Padding = New("UIPadding", {
         PaddingTop = UDim.new(0, 10),
@@ -2904,6 +2909,12 @@ function Library:RefreshTheme()
                 if Transparency ~= nil then
                     Child.Transparency = Transparency
                 end
+                Child.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                pcall(function()
+                    Child.BorderStrokePosition = Enum.BorderStrokePosition.Inner
+                    Child.BorderOffset = UDim.new(0, 0)
+                    Child.LineJoinMode = Enum.LineJoinMode.Round
+                end)
             end
         end
     end
@@ -2911,7 +2922,7 @@ function Library:RefreshTheme()
     local function ApplyElement(Object)
         if Object:GetAttribute("MoonHubGroupbox") then
             Object.BackgroundColor3 = Theme.Panel
-            ApplyStroke(Object, Theme.OutlineSoft, 0.22)
+            ApplyStroke(Object, Theme.OutlineSoft, 0.08)
             return
         end
 
@@ -2926,7 +2937,7 @@ function Library:RefreshTheme()
             Object.BackgroundColor3 = Theme.Background
         elseif Object.Name == "SearchBox" then
             Object.BackgroundColor3 = Theme.Element
-            ApplyStroke(Object, Theme.Outline, 0.35)
+            ApplyStroke(Object, Theme.Outline, 0.12)
         elseif Object.Name == "ModuleContainer" and Object:IsA("ScrollingFrame") then
             Object.ScrollBarImageColor3 = Theme.Outline
         elseif Object.Name == "SearchHandle" then
@@ -2987,7 +2998,7 @@ function Library:RefreshTheme()
         elseif Object.Name == "DropdownButton" and Object:IsA("TextButton") then
             Object.BackgroundColor3 = Theme.Element
             Object.TextColor3 = Theme.Text
-            ApplyStroke(Object, Theme.Outline, 0.25)
+            ApplyStroke(Object, Theme.Outline, 0.12)
         elseif Object.Name == "Divider" then
             Object.BackgroundColor3 = Theme.Outline
         elseif Object:IsA("TextBox") then
@@ -3036,7 +3047,7 @@ function Library:RefreshTheme()
                 if Button then
                     Button.BackgroundColor3 = Theme.Element
                     Button.TextColor3 = Theme.Text
-                    ApplyStroke(Button, Theme.Outline, 0.25)
+                    ApplyStroke(Button, Theme.Outline, 0.12)
                     local Label = Button:FindFirstChildOfClass("TextLabel")
                     if Label then Label.TextColor3 = Theme.Text end
                 end
@@ -3046,7 +3057,7 @@ function Library:RefreshTheme()
                         if Option:IsA("TextButton") and string.sub(Option.Name, 1, 7) == "Option_" then
                             Option.BackgroundColor3 = Theme.Panel
                             Option.TextColor3 = Theme.Text
-                            ApplyStroke(Option, Theme.OutlineSoft, 0.28)
+                            ApplyStroke(Option, Theme.OutlineSoft, 0.10)
                         end
                     end
                 end
@@ -3062,7 +3073,7 @@ function Library:RefreshTheme()
             local Label = Container:FindFirstChild("Text")
 
             Container.BackgroundColor3 = Theme.Element
-            ApplyStroke(Container, Theme.Outline, 0.25)
+            ApplyStroke(Container, Theme.Outline, 0.12)
 
             if Switch then
                 Switch.BackgroundColor3 = Toggle.Value and Theme.ToggleOn or Theme.ToggleOff
@@ -3085,14 +3096,14 @@ function Library:RefreshTheme()
         pcall(function()
             Button.Container.BackgroundColor3 = Theme.Element
             Button.Container.TextColor3 = Theme.Text
-            ApplyStroke(Button.Container, Theme.Outline, 0.25)
+            ApplyStroke(Button.Container, Theme.Outline, 0.12)
         end)
     end
 
     for _, Picker in pairs(Library.KeyPickers) do
         pcall(function()
             Picker.Container.BackgroundColor3 = Theme.Element
-            ApplyStroke(Picker.Container, Theme.Outline, 0.25)
+            ApplyStroke(Picker.Container, Theme.Outline, 0.12)
 
             local Label = Picker.Container:FindFirstChild("Text")
             if Label then
@@ -3108,7 +3119,7 @@ function Library:RefreshTheme()
                     KeyButton.BackgroundColor3 = Theme.Panel
                     KeyButton.TextColor3 = Theme.TextDim
                 end
-                ApplyStroke(KeyButton, Theme.Outline, 0.15)
+                ApplyStroke(KeyButton, Theme.Outline, 0.10)
             end
         end)
     end
@@ -3122,7 +3133,7 @@ function Library:RefreshTheme()
                 local MainButton = Container:FindFirstChildWhichIsA("TextButton")
                 if MainButton then
                     MainButton.BackgroundColor3 = Theme.Element
-                    ApplyStroke(MainButton, Theme.Outline, 0.25)
+                    ApplyStroke(MainButton, Theme.Outline, 0.12)
 
                     local Label = MainButton:FindFirstChild("Text")
                     if Label then
@@ -3143,6 +3154,7 @@ function Library:RefreshTheme()
                     if Object:IsA("TextButton") and string.sub(Object.Name, 1, 7) == "Option_" then
                         Object.BackgroundColor3 = Theme.Panel
                         Object.TextColor3 = Theme.Text
+                        ApplyStroke(Object, Theme.OutlineSoft, 0.10)
                     elseif Object.Name == "ChevronLeft" or Object.Name == "ChevronRight" then
                         Object.BackgroundColor3 = Theme.TextDim
                     end
@@ -3166,7 +3178,7 @@ function Library:RefreshTheme()
                     Box.BackgroundColor3 = Theme.Element
                     Box.TextColor3 = Theme.Text
                     Box.PlaceholderColor3 = Theme.Placeholder
-                    ApplyStroke(Box, Theme.Outline, 0.25)
+                    ApplyStroke(Box, Theme.Outline, 0.12)
                 end
             elseif Input.Type == "Label" then
                 Input.Container.TextColor3 = Theme.TextDim
@@ -3201,6 +3213,7 @@ function Library:RefreshTheme()
 
                 if Track then
                     Track.BackgroundColor3 = Theme.ToggleOff
+                    ApplyStroke(Track, Theme.OutlineSoft, 0.12)
                 end
 
                 if Fill then
@@ -3209,7 +3222,7 @@ function Library:RefreshTheme()
 
                 if Thumb then
                     Thumb.BackgroundColor3 = Theme.TextBright
-                    ApplyStroke(Thumb, Theme.Outline, 0)
+                    ApplyStroke(Thumb, Theme.Outline, 0.05)
                 end
             end)
         end
