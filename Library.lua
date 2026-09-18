@@ -57,28 +57,28 @@ local Library = {}
 Library.DefaultTheme = {
     -- MoonHub: dark navy palette based on the supplied GUI.
     -- Keep the base very dark; blue is used only for readable controls.
-    Background = Color3.fromRGB(7, 25, 46),
-    Sidebar = Color3.fromRGB(8, 29, 49),
-    Panel = Color3.fromRGB(9, 32, 54),
+    Background = Color3.fromRGB(4, 15, 28),
+    Sidebar = Color3.fromRGB(5, 19, 33),
+    Panel = Color3.fromRGB(6, 23, 38),
 
-    Element = Color3.fromRGB(18, 43, 64),
-    ElementHover = Color3.fromRGB(28, 62, 84),
-    Selected = Color3.fromRGB(24, 54, 76),
+    Element = Color3.fromRGB(10, 31, 49),
+    ElementHover = Color3.fromRGB(18, 48, 69),
+    Selected = Color3.fromRGB(14, 40, 60),
 
-    Outline = Color3.fromRGB(55, 88, 110),
-    OutlineSoft = Color3.fromRGB(43, 72, 92),
+    Outline = Color3.fromRGB(35, 65, 85),
+    OutlineSoft = Color3.fromRGB(27, 53, 71),
 
     Text = Color3.fromRGB(255, 255, 255),
     TextDim = Color3.fromRGB(190, 208, 222),
     TextBright = Color3.fromRGB(255, 255, 255),
     Placeholder = Color3.fromRGB(165, 185, 200),
 
-    ToggleOff = Color3.fromRGB(18, 43, 64),
-    ToggleOn = Color3.fromRGB(28, 62, 84),
+    ToggleOff = Color3.fromRGB(7, 22, 36),
+    ToggleOn = Color3.fromRGB(25, 62, 85),
     KnobOff = Color3.fromRGB(235, 243, 249),
 
-    Accent = Color3.fromRGB(28, 62, 84),
-    AccentSoft = Color3.fromRGB(24, 54, 76),
+    Accent = Color3.fromRGB(25, 62, 85),
+    AccentSoft = Color3.fromRGB(15, 43, 61),
 
     Success = Color3.fromRGB(120, 220, 150),
     Warning = Color3.fromRGB(235, 190, 90),
