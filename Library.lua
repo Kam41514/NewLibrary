@@ -55,22 +55,22 @@ local Library = {}
 --//==================================================
 
 Library.DefaultTheme = {
-    Background = Color3.fromRGB(5, 18, 32),
-    Sidebar = Color3.fromRGB(6, 22, 37),
-    Panel = Color3.fromRGB(8, 27, 43),
-    Element = Color3.fromRGB(17, 45, 65),
-    ElementHover = Color3.fromRGB(29, 68, 91),
-    Selected = Color3.fromRGB(23, 56, 77),
+    Background = Color3.fromRGB(13, 39, 65),
+    Sidebar = Color3.fromRGB(11, 35, 57),
+    Panel = Color3.fromRGB(10, 32, 53),
+    Element = Color3.fromRGB(30, 68, 96),
+    ElementHover = Color3.fromRGB(38, 82, 111),
+    Selected = Color3.fromRGB(35, 78, 106),
 
-    Outline = Color3.fromRGB(58, 91, 116),
-    OutlineSoft = Color3.fromRGB(43, 72, 94),
+    Outline = Color3.fromRGB(82, 116, 138),
+    OutlineSoft = Color3.fromRGB(61, 94, 117),
 
     Text = Color3.fromRGB(255, 255, 255),
-    TextDim = Color3.fromRGB(205, 220, 232),
+    TextDim = Color3.fromRGB(204, 220, 232),
     TextBright = Color3.fromRGB(255, 255, 255),
-    Placeholder = Color3.fromRGB(165, 185, 200),
+    Placeholder = Color3.fromRGB(150, 171, 187),
 
-    ToggleOff = Color3.fromRGB(20, 51, 71),
+    ToggleOff = Color3.fromRGB(30, 68, 96),
     ToggleOn = Color3.fromRGB(52, 91, 116),
     KnobOff = Color3.fromRGB(225, 235, 242),
 
@@ -103,6 +103,7 @@ Library._UnloadCallbacks = {}
 local TooltipGui
 local ActiveTooltip
 local TooltipToken = 0
+local ActiveTweens = {}
 
 function Library:RegisterThemeCallback(Callback)
     table.insert(self._ThemeCallbacks, Callback)
@@ -250,8 +251,22 @@ local function Tween(Object, Time, Properties)
         Properties
     )
 
+    ActiveTweens[T] = true
+    T.Completed:Connect(function()
+        ActiveTweens[T] = nil
+    end)
+
     T:Play()
     return T
+end
+
+local function CancelThemeTweens()
+    for TweenObject in pairs(ActiveTweens) do
+        pcall(function()
+            TweenObject:Cancel()
+        end)
+        ActiveTweens[TweenObject] = nil
+    end
 end
 
 local function NormalizeName(Name)
@@ -1201,6 +1216,7 @@ local function CreateDropdown(Groupbox, Identifier, Info)
     })
 
     local Button = New("TextButton", {
+        Name = "DropdownButton",
         Size = UDim2.new(1, 0, 0, 36),
         BackgroundColor3 = Library.Theme.Element,
         BorderSizePixel = 0,
@@ -1259,6 +1275,7 @@ local function CreateDropdown(Groupbox, Identifier, Info)
     })
 
     local OptionsFrame = New("Frame", {
+        Name = "OptionsFrame",
         Position = UDim2.new(0, 0, 0, 40),
         Size = UDim2.new(1, 0, 0, math.max(1, #Values) * 30 + 6),
         BackgroundColor3 = Library.Theme.Panel,
@@ -3180,28 +3197,34 @@ function Library:RefreshTheme()
 end
 
 function Library:SetTheme(Theme)
-    -- Hard reset: every known color is restored to the base MoonHub palette
-    -- before the new theme is applied. This prevents partial themes from
-    -- leaving old blue/red/etc. colors behind.
+    -- A theme switch is a hard visual reset. Cancel every running hover/open
+    -- tween first; otherwise an old tween can finish later and write the old
+    -- theme color back into a dropdown, button, tab, etc.
+    CancelThemeTweens()
+
+    self._ThemeVersion = (self._ThemeVersion or 0) + 1
+    local Version = self._ThemeVersion
+
+    -- Start from the complete MoonHub base palette every single time.
+    -- This prevents partial/custom themes from inheriting any previous color.
     for Key, Value in pairs(Library.DefaultTheme) do
         Library.Theme[Key] = Value
     end
 
+    -- Only known theme keys are accepted.
     for Key, Value in pairs(Theme or {}) do
         if Library.DefaultTheme[Key] ~= nil then
             Library.Theme[Key] = Value
         end
     end
 
-    self._ThemeVersion = (self._ThemeVersion or 0) + 1
-    local Version = self._ThemeVersion
-
     self:RefreshTheme()
 
-    -- Hover/open animations created with the previous theme can still be
-    -- finishing when a theme changes. Refresh again after those tweens end.
-    task.delay(0.25, function()
+    -- A second pass catches objects created/opened during the switch and
+    -- guarantees dropdown option frames use the new theme as well.
+    task.delay(0.22, function()
         if self._ThemeVersion == Version and not self.Unloaded then
+            CancelThemeTweens()
             pcall(function()
                 self:RefreshTheme()
             end)
