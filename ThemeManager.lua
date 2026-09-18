@@ -684,3 +684,4 @@ function ThemeManager:Init(Library, Folder)
 end
 
 return ThemeManager
+
