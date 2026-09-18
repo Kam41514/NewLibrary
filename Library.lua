@@ -55,23 +55,23 @@ local Library = {}
 --//==================================================
 
 Library.DefaultTheme = {
-    Background = Color3.fromRGB(7, 25, 46),
-    Sidebar = Color3.fromRGB(8, 29, 49),
-    Panel = Color3.fromRGB(10, 34, 55),
-    Element = Color3.fromRGB(25, 59, 86),
-    ElementHover = Color3.fromRGB(42, 91, 120),
-    Selected = Color3.fromRGB(31, 72, 100),
+    Background = Color3.fromRGB(5, 18, 32),
+    Sidebar = Color3.fromRGB(6, 22, 37),
+    Panel = Color3.fromRGB(8, 27, 43),
+    Element = Color3.fromRGB(17, 45, 65),
+    ElementHover = Color3.fromRGB(29, 68, 91),
+    Selected = Color3.fromRGB(23, 56, 77),
 
-    Outline = Color3.fromRGB(72, 112, 145),
-    OutlineSoft = Color3.fromRGB(55, 91, 117),
+    Outline = Color3.fromRGB(58, 91, 116),
+    OutlineSoft = Color3.fromRGB(43, 72, 94),
 
     Text = Color3.fromRGB(255, 255, 255),
     TextDim = Color3.fromRGB(205, 220, 232),
     TextBright = Color3.fromRGB(255, 255, 255),
     Placeholder = Color3.fromRGB(165, 185, 200),
 
-    ToggleOff = Color3.fromRGB(30, 68, 96),
-    ToggleOn = Color3.fromRGB(65, 108, 138),
+    ToggleOff = Color3.fromRGB(20, 51, 71),
+    ToggleOn = Color3.fromRGB(52, 91, 116),
     KnobOff = Color3.fromRGB(225, 235, 242),
 
     Accent = Color3.fromRGB(145, 92, 255),
@@ -3180,8 +3180,9 @@ function Library:RefreshTheme()
 end
 
 function Library:SetTheme(Theme)
-    -- Reset every theme key first so a previous theme can never leave
-    -- stale colors behind. Then apply the selected theme on top.
+    -- Hard reset: every known color is restored to the base MoonHub palette
+    -- before the new theme is applied. This prevents partial themes from
+    -- leaving old blue/red/etc. colors behind.
     for Key, Value in pairs(Library.DefaultTheme) do
         Library.Theme[Key] = Value
     end
@@ -3192,7 +3193,20 @@ function Library:SetTheme(Theme)
         end
     end
 
+    self._ThemeVersion = (self._ThemeVersion or 0) + 1
+    local Version = self._ThemeVersion
+
     self:RefreshTheme()
+
+    -- Hover/open animations created with the previous theme can still be
+    -- finishing when a theme changes. Refresh again after those tweens end.
+    task.delay(0.25, function()
+        if self._ThemeVersion == Version and not self.Unloaded then
+            pcall(function()
+                self:RefreshTheme()
+            end)
+        end
+    end)
 end
 
 function Library:SetAccent(Color)
