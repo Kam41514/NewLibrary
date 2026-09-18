@@ -35,25 +35,25 @@ ThemeManager.StartupTheme = "MoonHub"
 ThemeManager.Themes = {
     MoonHub = {
         -- Exact dark-blue MoonHub base, taken from the test GUI.
-        Background = Color3.fromRGB(7, 25, 46),
-        Sidebar = Color3.fromRGB(8, 29, 49),
-        Panel = Color3.fromRGB(10, 34, 55),
+        Background = Color3.fromRGB(5, 18, 32),
+        Sidebar = Color3.fromRGB(6, 22, 37),
+        Panel = Color3.fromRGB(8, 27, 43),
 
         -- Element palette is kept dark; no old black theme colors remain.
-        Element = Color3.fromRGB(25, 59, 86),
-        ElementHover = Color3.fromRGB(42, 91, 120),
-        Selected = Color3.fromRGB(31, 72, 100),
+        Element = Color3.fromRGB(17, 45, 65),
+        ElementHover = Color3.fromRGB(29, 68, 91),
+        Selected = Color3.fromRGB(23, 56, 77),
 
-        Outline = Color3.fromRGB(72, 112, 145),
-        OutlineSoft = Color3.fromRGB(55, 91, 117),
+        Outline = Color3.fromRGB(58, 91, 116),
+        OutlineSoft = Color3.fromRGB(43, 72, 94),
 
         Text = Color3.fromRGB(255, 255, 255),
         TextDim = Color3.fromRGB(205, 220, 232),
         TextBright = Color3.fromRGB(255, 255, 255),
         Placeholder = Color3.fromRGB(165, 185, 200),
 
-        ToggleOff = Color3.fromRGB(30, 68, 96),
-        ToggleOn = Color3.fromRGB(65, 108, 138),
+        ToggleOff = Color3.fromRGB(20, 51, 71),
+        ToggleOn = Color3.fromRGB(52, 91, 116),
         KnobOff = Color3.fromRGB(225, 235, 242),
 
         Accent = Color3.fromRGB(145, 92, 255),
@@ -343,6 +343,9 @@ function ThemeManager:ApplyTheme(Name)
     end
 
     self.CurrentTheme = Name
+
+    -- Library:SetTheme performs a full reset first, so switching themes
+    -- cannot inherit colors from the previously active theme.
     self.Library:SetTheme(Copy)
     return true
 end
