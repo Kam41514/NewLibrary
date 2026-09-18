@@ -34,36 +34,28 @@ ThemeManager.StartupTheme = "MoonHub"
 
 ThemeManager.Themes = {
     MoonHub = {
-        -- Main background: based on the dark blue MoonHub test GUI
+        -- Exact dark-blue MoonHub base, taken from the test GUI.
         Background = Color3.fromRGB(7, 25, 46),
-
-        -- Left sidebar / module area
         Sidebar = Color3.fromRGB(8, 29, 49),
-
-        -- Top bar / content panels
         Panel = Color3.fromRGB(10, 34, 55),
 
-        -- Normal buttons / elements
+        -- Element palette is kept dark; no old black theme colors remain.
         Element = Color3.fromRGB(25, 59, 86),
         ElementHover = Color3.fromRGB(42, 91, 120),
         Selected = Color3.fromRGB(31, 72, 100),
 
-        -- Borders
         Outline = Color3.fromRGB(72, 112, 145),
         OutlineSoft = Color3.fromRGB(55, 91, 117),
 
-        -- Text
         Text = Color3.fromRGB(255, 255, 255),
         TextDim = Color3.fromRGB(205, 220, 232),
         TextBright = Color3.fromRGB(255, 255, 255),
         Placeholder = Color3.fromRGB(165, 185, 200),
 
-        -- Toggles
         ToggleOff = Color3.fromRGB(30, 68, 96),
         ToggleOn = Color3.fromRGB(65, 108, 138),
         KnobOff = Color3.fromRGB(225, 235, 242),
 
-        -- MoonHub accent
         Accent = Color3.fromRGB(145, 92, 255),
         AccentSoft = Color3.fromRGB(110, 70, 200),
 
@@ -346,7 +338,10 @@ function ThemeManager:ApplyTheme(Name)
     end
 
     local Copy = {}
-    for Key, Value in pairs(Theme) do Copy[Key] = Value end
+    for Key, Value in pairs(Theme) do
+        Copy[Key] = Value
+    end
+
     self.CurrentTheme = Name
     self.Library:SetTheme(Copy)
     return true
@@ -681,20 +676,8 @@ function ThemeManager:Init(Library, Folder)
         -- MoonHub her zaman başlangıç teması olsun.
         self.CurrentTheme = "MoonHub"
 
-        local MoonHubTheme = self.Themes.MoonHub
-        if MoonHubTheme then
-            local Copy = {}
-
-            for Key, Value in pairs(MoonHubTheme) do
-                Copy[Key] = Value
-            end
-
-            self.Library:SetTheme(Copy)
-
-            if self.Library.RefreshTheme then
-                self.Library:RefreshTheme()
-            end
-        end
+        -- Force a clean MoonHub reset on every startup.
+        self:ApplyTheme("MoonHub")
     end
 
     if Folder then
