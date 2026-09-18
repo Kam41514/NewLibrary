@@ -2619,7 +2619,7 @@ function Library:CreateWindow(Config)
     Stroke(
         Frame,
         Library.Theme.OutlineSoft,
-        0.1,
+        0,
         1
     )
 
@@ -3128,7 +3128,7 @@ function Library:RefreshTheme()
 
         if Object.Name == "MainFrame" then
             Object.BackgroundColor3 = Theme.Background
-            ApplyStroke(Object, Theme.OutlineSoft, 0.1)
+            ApplyStroke(Object, Theme.OutlineSoft, 0)
         elseif Object.Name == "TopBar" then
             Object.BackgroundColor3 = Theme.Panel
         elseif Object.Name == "Explorer" or Object.Name == "Modules" then
