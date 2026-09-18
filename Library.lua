@@ -43,6 +43,7 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -2476,6 +2477,41 @@ function Library:CreateWindow(Config)
         Parent = TopBar,
     })
 
+    local GameName = New("TextLabel", {
+        Name = "GameName",
+        Position = UDim2.new(0, 10, 0, 0),
+        Size = UDim2.new(0, 190, 0, 36),
+        BackgroundTransparency = 1,
+        Text = game.Name,
+        TextColor3 = Library.Theme.TextBright,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Center,
+        TextTruncate = Enum.TextTruncate.AtEnd,
+        TextStrokeColor3 = Color3.fromRGB(25, 57, 79),
+        TextStrokeTransparency = 0.45,
+        Parent = TopBar,
+    })
+
+    task.spawn(function()
+        local Success, ProductInfo = pcall(function()
+            return MarketplaceService:GetProductInfo(
+                game.PlaceId,
+                Enum.InfoType.Asset
+            )
+        end)
+
+        if Success
+            and type(ProductInfo) == "table"
+            and ProductInfo.Name
+            and tostring(ProductInfo.Name) ~= ""
+            and GameName
+            and GameName.Parent then
+            GameName.Text = tostring(ProductInfo.Name)
+        end
+    end)
+
     local SearchArea = New("Frame", {
         Name = "Explorer",
         Position = UDim2.new(0, 0, 0, 36),
@@ -2615,6 +2651,7 @@ function Library:CreateWindow(Config)
         Gui = Gui,
         Frame = Frame,
         TopBar = TopBar,
+        GameName = GameName,
         SearchInput = SearchInput,
         ModuleContainer = ModuleContainer,
         Content = Content,
@@ -2833,6 +2870,8 @@ function Library:RefreshTheme()
         elseif Object.Name == "Header" and Object:IsA("TextLabel") then
             Object.TextColor3 = Theme.TextBright
         elseif Object.Name == "Title" and Object:IsA("TextLabel") then
+            Object.TextColor3 = Theme.TextBright
+        elseif Object.Name == "GameName" and Object:IsA("TextLabel") then
             Object.TextColor3 = Theme.TextBright
         elseif Object.Name == "Description" and Object:IsA("TextLabel") then
             Object.TextColor3 = Theme.TextDim
