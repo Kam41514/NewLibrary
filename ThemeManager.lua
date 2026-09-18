@@ -51,12 +51,12 @@ ThemeManager.Themes = {
         TextBright = Color3.fromRGB(255, 255, 255),
         Placeholder = Color3.fromRGB(165, 185, 200),
 
-        ToggleOff = Color3.fromRGB(18, 43, 64),
-        ToggleOn = Color3.fromRGB(28, 62, 84),
+        ToggleOff = Color3.fromRGB(8, 25, 42),
+        ToggleOn = Color3.fromRGB(32, 76, 105),
         KnobOff = Color3.fromRGB(235, 243, 249),
 
-        Accent = Color3.fromRGB(28, 62, 84),
-        AccentSoft = Color3.fromRGB(24, 54, 76),
+        Accent = Color3.fromRGB(32, 76, 105),
+        AccentSoft = Color3.fromRGB(20, 50, 72),
 
         Success = Color3.fromRGB(120, 220, 150),
         Warning = Color3.fromRGB(235, 190, 90),
