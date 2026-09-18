@@ -54,7 +54,7 @@ local Library = {}
 --// THEME
 --//==================================================
 
-Library.Theme = {
+Library.DefaultTheme = {
     Background = Color3.fromRGB(7, 25, 46),
     Sidebar = Color3.fromRGB(8, 29, 49),
     Panel = Color3.fromRGB(10, 34, 55),
@@ -81,6 +81,12 @@ Library.Theme = {
     Warning = Color3.fromRGB(235, 190, 90),
     Error = Color3.fromRGB(235, 95, 95),
 }
+
+-- Always start from the exact MoonHub palette.
+Library.Theme = {}
+for Key, Value in pairs(Library.DefaultTheme) do
+    Library.Theme[Key] = Value
+end
 
 Library.Toggles = {}
 Library.Options = {}
@@ -582,7 +588,7 @@ function Library:Notify(Data, Time)
         Font = Enum.Font.GothamBold,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextYAlignment = Enum.TextYAlignment.Center,
-        TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+        TextStrokeColor3 = Library.Theme.Background,
         TextStrokeTransparency = 0.82,
         Parent = Card,
     })
@@ -606,7 +612,7 @@ function Library:Notify(Data, Time)
         Name = "ProgressBackground",
         Position = UDim2.new(0, 12, 1, -5),
         Size = UDim2.new(1, -24, 0, 2),
-        BackgroundColor3 = Color3.fromRGB(25, 25, 29),
+        BackgroundColor3 = Library.Theme.Sidebar,
         BorderSizePixel = 0,
         Parent = Card,
     })
@@ -2162,7 +2168,7 @@ function WindowMethods:AddTab(Name)
         Font = Enum.Font.GothamBold,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextYAlignment = Enum.TextYAlignment.Center,
-        TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+        TextStrokeColor3 = Library.Theme.Background,
         TextStrokeTransparency = 0.82,
         Parent = TabButton,
     })
@@ -2500,9 +2506,26 @@ function Library:CreateWindow(Config)
         local PlaceId = tonumber(game.PlaceId)
         local FoundName = nil
 
+        local function AcceptPlaceInfo(Info)
+            if type(Info) ~= "table" then
+                return nil
+            end
+
+            local Name = Info.Name
+            local AssetTypeId = tonumber(Info.AssetTypeId)
+
+            -- Place assets use AssetTypeId 9. This prevents executor-provided
+            -- generic names such as "UGC" from being used as the game name.
+            if AssetTypeId == 9
+                and type(Name) == "string"
+                and Name ~= "" then
+                return Name
+            end
+
+            return nil
+        end
+
         if PlaceId and PlaceId > 0 then
-            -- GetProductInfoAsync is the current API. The queried ID is the
-            -- PlaceId (asset type 9), which is what we want for the place name.
             local Success, Info = pcall(function()
                 return MarketplaceService:GetProductInfoAsync(
                     PlaceId,
@@ -2510,16 +2533,10 @@ function Library:CreateWindow(Config)
                 )
             end)
 
-            if Success and type(Info) == "table" then
-                if tonumber(Info.AssetTypeId) == 9
-                    and type(Info.Name) == "string"
-                    and Info.Name ~= "" then
-                    FoundName = Info.Name
-                end
+            if Success then
+                FoundName = AcceptPlaceInfo(Info)
             end
 
-            -- Fallback for executors/Roblox versions where the newer
-            -- async method is unavailable.
             if not FoundName then
                 local OldSuccess, OldInfo = pcall(function()
                     return MarketplaceService:GetProductInfo(
@@ -2528,13 +2545,8 @@ function Library:CreateWindow(Config)
                     )
                 end)
 
-                if OldSuccess and type(OldInfo) == "table" then
-                    if (OldInfo.AssetTypeId == nil
-                        or tonumber(OldInfo.AssetTypeId) == 9)
-                        and type(OldInfo.Name) == "string"
-                        and OldInfo.Name ~= "" then
-                        FoundName = OldInfo.Name
-                    end
+                if OldSuccess then
+                    FoundName = AcceptPlaceInfo(OldInfo)
                 end
             end
         end
@@ -2903,8 +2915,10 @@ function Library:RefreshTheme()
             Object.TextColor3 = Theme.TextBright
         elseif Object.Name == "Title" and Object:IsA("TextLabel") then
             Object.TextColor3 = Theme.TextBright
+            Object.TextStrokeColor3 = Theme.Background
         elseif Object.Name == "GameName" and Object:IsA("TextLabel") then
             Object.TextColor3 = Theme.TextBright
+            Object.TextStrokeColor3 = Theme.Background
         elseif Object.Name == "Description" and Object:IsA("TextLabel") then
             Object.TextColor3 = Theme.TextDim
         elseif Object.Name == "Minimize" or Object.Name == "Close" then
@@ -3166,8 +3180,14 @@ function Library:RefreshTheme()
 end
 
 function Library:SetTheme(Theme)
+    -- Reset every theme key first so a previous theme can never leave
+    -- stale colors behind. Then apply the selected theme on top.
+    for Key, Value in pairs(Library.DefaultTheme) do
+        Library.Theme[Key] = Value
+    end
+
     for Key, Value in pairs(Theme or {}) do
-        if Library.Theme[Key] ~= nil then
+        if Library.DefaultTheme[Key] ~= nil then
             Library.Theme[Key] = Value
         end
     end
