@@ -34,31 +34,31 @@ ThemeManager.StartupTheme = "MoonHub"
 
 ThemeManager.Themes = {
     MoonHub = {
-        -- Dark navy palette based on the supplied GUI's actual colors.
-    Background = Color3.fromRGB(7, 25, 46),
-    Sidebar = Color3.fromRGB(8, 29, 49),
-    Panel = Color3.fromRGB(10, 34, 55),
+        -- Exact MoonHub palette used by Library.DefaultTheme.
+        Background = Color3.fromRGB(7, 25, 46),
+        Sidebar = Color3.fromRGB(8, 29, 49),
+        Panel = Color3.fromRGB(10, 34, 55),
 
-    Element = Color3.fromRGB(30, 68, 96),
-    ElementHover = Color3.fromRGB(42, 91, 120),
-    Selected = Color3.fromRGB(31, 72, 100),
+        Element = Color3.fromRGB(30, 68, 96),
+        ElementHover = Color3.fromRGB(42, 91, 120),
+        Selected = Color3.fromRGB(31, 72, 100),
 
-    Outline = Color3.fromRGB(100, 140, 165),
-    OutlineSoft = Color3.fromRGB(72, 112, 145),
+        Outline = Color3.fromRGB(100, 140, 165),
+        OutlineSoft = Color3.fromRGB(72, 112, 145),
 
-    Text = Color3.fromRGB(255, 255, 255),
-    TextDim = Color3.fromRGB(190, 208, 222),
-    TextBright = Color3.fromRGB(255, 255, 255),
-    Placeholder = Color3.fromRGB(165, 185, 200),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(190, 208, 222),
+        TextBright = Color3.fromRGB(255, 255, 255),
+        Placeholder = Color3.fromRGB(165, 185, 200),
 
-    ToggleOff = Color3.fromRGB(8, 25, 42),
-    ToggleOn = Color3.fromRGB(32, 76, 105),
-    KnobOff = Color3.fromRGB(235, 243, 249),
+        ToggleOff = Color3.fromRGB(8, 25, 42),
+        ToggleOn = Color3.fromRGB(32, 76, 105),
+        KnobOff = Color3.fromRGB(235, 243, 249),
 
-    Accent = Color3.fromRGB(32, 76, 105),
-    AccentSoft = Color3.fromRGB(20, 50, 72),
+        Accent = Color3.fromRGB(32, 76, 105),
+        AccentSoft = Color3.fromRGB(20, 50, 72),
 
-    Success = Color3.fromRGB(120, 220, 150),
+        Success = Color3.fromRGB(120, 220, 150),
         Warning = Color3.fromRGB(235, 190, 90),
         Error = Color3.fromRGB(235, 95, 95),
         GradientEnabled = true,
@@ -350,9 +350,15 @@ function ThemeManager:ApplyTheme(Name)
         Copy[Key] = Value
     end
 
-    -- Library:SetTheme cancels old visual tweens, restores every base token,
-    -- applies only this theme, and performs a second refresh pass.
-    self.Library:SetTheme(Copy)
+    -- Library:SetTheme performs the complete visual refresh.
+    local Success = pcall(function()
+        self.Library:SetTheme(Copy)
+    end)
+
+    if not Success then
+        return false
+    end
+
     self.CurrentTheme = Name
     return true
 end
