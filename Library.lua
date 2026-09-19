@@ -93,6 +93,15 @@ for Key, Value in pairs(Library.DefaultTheme) do
     Library.Theme[Key] = Value
 end
 
+-- Obsidian-compatible public configuration flags.
+-- These can be changed before or after creating the window.
+Library.ForceCheckbox = false
+Library.ShowToggleFrameInKeybinds = true
+Library.NotifyOnError = false
+Library.NotifySide = "Left"
+Library.ShowCustomCursor = false
+Library.ToggleKeybind = Enum.KeyCode.RightShift
+
 Library.Toggles = {}
 Library.Options = {}
 Library.Labels = {}
@@ -866,6 +875,37 @@ local function CreateToggle(Groupbox, Identifier, Info)
     Corner(Knob, 20)
     Stroke(Knob, Library.Theme.Outline, 0.10, 1)
 
+    local Checkbox
+    local CheckMark
+
+    if Library.ForceCheckbox or Options.ForceCheckbox then
+        Switch.Visible = false
+        Checkbox = New("Frame", {
+            Name = "Checkbox",
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -4, 0.5, 0),
+            Size = UDim2.fromOffset(16, 16),
+            BackgroundColor3 = Value and Library.Theme.ToggleOn or Library.Theme.ToggleOff,
+            BorderSizePixel = 0,
+            Parent = Container,
+        })
+        Corner(Checkbox, 4)
+        Stroke(Checkbox, Library.Theme.OutlineSoft, 0.18, 1)
+        CheckMark = New("TextLabel", {
+            Name = "CheckMark",
+            Size = UDim2.fromScale(1, 1),
+            BackgroundTransparency = 1,
+            Text = "✓",
+            TextColor3 = Library.Theme.TextBright,
+            TextSize = 11,
+            Font = Enum.Font.GothamBold,
+            TextXAlignment = Enum.TextXAlignment.Center,
+            TextYAlignment = Enum.TextYAlignment.Center,
+            Visible = Value,
+            Parent = Checkbox,
+        })
+    end
+
     local Toggle = {
         Type = "Toggle",
         Key = Key,
@@ -884,10 +924,15 @@ local function CreateToggle(Groupbox, Identifier, Info)
     function Toggle:_RefreshAddonLayout()
         local Controls = self._AddonControls or {}
 
-        -- The switch is always the right-most control.
-        Switch.Position = UDim2.new(1, -38, 0.5, -8)
+        -- Keep the switch/checkbox on the far right. Addons are packed to its left.
+        if Checkbox and Checkbox.Parent then
+            Checkbox.AnchorPoint = Vector2.new(1, 0.5)
+            Checkbox.Position = UDim2.new(1, -4, 0.5, 0)
+        elseif Switch and Switch.Parent then
+            Switch.Position = UDim2.new(1, -38, 0.5, -8)
+        end
 
-        local Right = 44
+        local Right = Checkbox and 26 or 44
         local Gap = 6
 
         -- Controls are placed from right to left, with the switch staying
@@ -895,9 +940,18 @@ local function CreateToggle(Groupbox, Identifier, Info)
         for Index = #Controls, 1, -1 do
             local Control = Controls[Index]
 
-            if Control and Control.Parent then
+            if Control and Control.Parent and Control.Visible ~= false then
                 local Width = Control:GetAttribute("MoonHubAddonWidth") or Control.Size.X.Offset
-                Control.Position = UDim2.new(1, -Right - Width, 0.5, -math.floor(Control.Size.Y.Offset / 2))
+                Width = math.max(1, tonumber(Width) or 1)
+
+                Control.AnchorPoint = Vector2.new(1, 0.5)
+                Control.Position = UDim2.new(
+                    1,
+                    -Right,
+                    0.5,
+                    0
+                )
+
                 Right = Right + Width + Gap
             end
         end
@@ -1001,6 +1055,11 @@ local function CreateToggle(Groupbox, Identifier, Info)
         Value = NewValue == true
         self.Value = Value
         UpdateVisual()
+
+        if Checkbox and Checkbox.Parent then
+            Checkbox.BackgroundColor3 = Value and Library.Theme.ToggleOn or Library.Theme.ToggleOff
+            CheckMark.Visible = Value
+        end
 
         task.spawn(function()
             local Success, Error = pcall(function()
@@ -2885,13 +2944,26 @@ local function CreateInput(Groupbox, Identifier, Info)
 
     setmetatable(Input, {__index = ElementMethods})
 
+    function Input:OnChanged(Callback)
+        if type(Callback) ~= "function" then
+            return self
+        end
+
+        self.Changed = Callback
+        return self
+    end
+
     function Input:SetValue(NewValue)
         Value = tostring(NewValue or "")
         self.Value = Value
         Box.Text = Value
 
         task.spawn(function()
-            self.Callback(Value)
+            pcall(self.Callback, Value)
+        end)
+
+        task.spawn(function()
+            pcall(self.Changed, Value)
         end)
     end
 
@@ -2900,15 +2972,15 @@ local function CreateInput(Groupbox, Identifier, Info)
         Input.Value = Value
 
         task.spawn(function()
-            Input.Callback(Value)
+            pcall(Input.Callback, Value)
         end)
 
         task.spawn(function()
-            Input.Changed(Value)
+            pcall(Input.Changed, Value)
         end)
     end)
 
-    Library.Labels[Key] = Input
+    Library.Options[Key] = Input
 
     return Input
 end
@@ -3167,7 +3239,20 @@ end
 
 local GroupboxMethods = {}
 
+function GroupboxMethods:AddCheckbox(Identifier, Info)
+    Info = Info or {}
+    Info = table.clone(Info)
+    Info.ForceCheckbox = true
+    return CreateToggle(self, Identifier, Info)
+end
+
 function GroupboxMethods:AddToggle(Identifier, Info)
+    Info = Info or {}
+    if Library.ForceCheckbox then
+        Info = table.clone(Info)
+        Info.ForceCheckbox = true
+    end
+
     return CreateToggle(self, Identifier, Info)
 end
 
