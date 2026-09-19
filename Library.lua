@@ -877,6 +877,36 @@ local function CreateToggle(Groupbox, Identifier, Info)
         Tooltip = Options.Tooltip,
     }
 
+    Toggle._AddonControls = {}
+    Toggle._KeyPicker = nil
+    Toggle._ColorPickers = {}
+
+    function Toggle:_RefreshAddonLayout()
+        local Controls = self._AddonControls or {}
+
+        -- The switch is always the right-most control.
+        Switch.Position = UDim2.new(1, -38, 0.5, -8)
+
+        local Right = 44
+        local Gap = 6
+
+        -- Controls are placed from right to left, with the switch staying
+        -- visible on the far right just like Obsidian's toggle rows.
+        for Index = #Controls, 1, -1 do
+            local Control = Controls[Index]
+
+            if Control and Control.Parent then
+                local Width = Control:GetAttribute("MoonHubAddonWidth") or Control.Size.X.Offset
+                Control.Position = UDim2.new(1, -Right - Width, 0.5, -math.floor(Control.Size.Y.Offset / 2))
+                Right = Right + Width + Gap
+            end
+        end
+
+        if Label and Label.Parent then
+            Label.Size = UDim2.new(1, -(Right + 4), 1, 0)
+        end
+    end
+
     setmetatable(Toggle, {__index = ElementMethods})
 
     if Options.Tooltip then
@@ -950,6 +980,21 @@ local function CreateToggle(Groupbox, Identifier, Info)
                 TextColor3 = Library.Theme.Text,
             })
         end
+    end
+
+    function Toggle:OnChanged(Callback)
+        if type(Callback) ~= "function" then
+            return self
+        end
+
+        self.Changed = Callback
+
+        -- Match Obsidian: registering OnChanged immediately reports the current value.
+        task.spawn(function()
+            pcall(Callback, self.Value)
+        end)
+
+        return self
     end
 
     function Toggle:SetValue(NewValue)
@@ -1148,6 +1193,13 @@ local function CreateKeyPicker(Groupbox, Identifier, Info)
         end
     end
 
+    function KeyPicker:OnChanged(Callback)
+        if type(Callback) == "function" then
+            self.Changed = Callback
+        end
+        return self
+    end
+
     function KeyPicker:SetKey(NewKey)
         CurrentKey = ResolveKey(NewKey)
         self.Value = CurrentKey
@@ -1155,7 +1207,7 @@ local function CreateKeyPicker(Groupbox, Identifier, Info)
         UpdateKeyButton()
 
         task.spawn(function()
-            self.Changed(CurrentKey)
+            pcall(self.Changed, CurrentKey)
         end)
     end
 
@@ -1310,8 +1362,8 @@ local function CreateToggleKeyPicker(Toggle, Identifier, Info)
     local KeyButton = New("TextButton", {
         Name = "KeyButton",
         AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -46, 0.5, 0),
-        Size = UDim2.new(0, 58, 0, 22),
+        Position = UDim2.new(1, -106, 0.5, 0),
+        Size = UDim2.new(0, 62, 0, 22),
         BackgroundColor3 = Library.Theme.Panel,
         BorderSizePixel = 0,
         AutoButtonColor = false,
@@ -1327,14 +1379,6 @@ local function CreateToggleKeyPicker(Toggle, Identifier, Info)
 
     Corner(KeyButton, 5)
     Stroke(KeyButton, Library.Theme.Outline, 0.10, 1)
-
-    -- Switch'i key picker varken biraz sağa taşı.
-    local Switch = Toggle.Container:FindFirstChild("Switch")
-    if Switch then
-        -- Obsidian-style layout: key box at the far right, toggle switch
-        -- immediately to its left. Keep both controls on the same row.
-        Switch.Position = UDim2.new(1, -76, 0.5, -8)
-    end
 
     local Picker = {
         Type = "KeyPicker",
@@ -1354,12 +1398,12 @@ local function CreateToggleKeyPicker(Toggle, Identifier, Info)
         NoUI = Options.NoUI == true,
     }
 
-    -- Make room for both the switch and the key box without overlapping the
-    -- toggle text.
-    local ToggleText = Toggle.Container:FindFirstChild("Text")
-    if ToggleText and ToggleText:IsA("TextLabel") then
-        ToggleText.Size = UDim2.new(1, -112, 1, 0)
-    end
+    KeyButton:SetAttribute("MoonHubAddonWidth", 62)
+
+    table.insert(Toggle._AddonControls, KeyButton)
+    Toggle._KeyPicker = Picker
+    Toggle.KeyPicker = Picker
+    Toggle:_RefreshAddonLayout()
 
     local function SafeCall(Callback, Value)
         if type(Callback) ~= "function" then
@@ -1475,10 +1519,14 @@ local function CreateToggleKeyPicker(Toggle, Identifier, Info)
             KeyButton:Destroy()
         end
 
-        local CurrentSwitch = Toggle.Container:FindFirstChild("Switch")
-        if CurrentSwitch then
-            CurrentSwitch.Position = UDim2.new(1, -40, 0.5, -8)
+        for Index, Control in ipairs(Toggle._AddonControls) do
+            if Control == KeyButton then
+                table.remove(Toggle._AddonControls, Index)
+                break
+            end
         end
+
+        Toggle:_RefreshAddonLayout()
 
         if Library.KeyPickers[Key] == Picker then
             Library.KeyPickers[Key] = nil
@@ -1592,20 +1640,16 @@ local function CreateToggleKeyPicker(Toggle, Identifier, Info)
     if Options.NoUI then
         KeyButton.Visible = false
 
-        -- With no visible key box, use the normal toggle position again.
-        local HiddenSwitch = Toggle.Container:FindFirstChild("Switch")
-        if HiddenSwitch then
-            HiddenSwitch.Position = UDim2.new(1, -40, 0.5, -8)
+        for Index, Control in ipairs(Toggle._AddonControls) do
+            if Control == KeyButton then
+                table.remove(Toggle._AddonControls, Index)
+                break
+            end
         end
 
-        local HiddenToggleText = Toggle.Container:FindFirstChild("Text")
-        if HiddenToggleText and HiddenToggleText:IsA("TextLabel") then
-            HiddenToggleText.Size = UDim2.new(1, -55, 1, 0)
-        end
+        Toggle:_RefreshAddonLayout()
     end
 
-    Toggle._KeyPicker = Picker
-    Toggle.KeyPicker = Picker
     Library.KeyPickers[Key] = Picker
 
     UpdateButton()
@@ -1629,6 +1673,690 @@ local function CreateToggleKeyPicker(Toggle, Identifier, Info)
     end
 
     return Picker
+end
+
+
+--//==================================================
+--// COLOR PICKER ADDON (Obsidian-style)
+--//==================================================
+
+local ActiveColorPicker = nil
+local ColorPickerGui = nil
+
+local function EnsureColorPickerGui()
+    if ColorPickerGui and ColorPickerGui.Parent then
+        return ColorPickerGui
+    end
+
+    ColorPickerGui = New("ScreenGui", {
+        Name = "MoonHubColorPicker",
+        ResetOnSpawn = false,
+        IgnoreGuiInset = true,
+        ZIndexBehavior = Enum.ZIndexBehavior.Global,
+        DisplayOrder = 1002,
+        Parent = PlayerGui,
+    })
+
+    return ColorPickerGui
+end
+
+local function HideColorPicker()
+    if ActiveColorPicker and ActiveColorPicker.Hide then
+        ActiveColorPicker:Hide()
+    else
+        ActiveColorPicker = nil
+    end
+end
+
+local function CreateColorPicker(Toggle, Identifier, Info)
+    local Key, Options = MakeKey(Identifier, Info)
+    Options = Options or {}
+
+    local Value = typeof(Options.Default) == "Color3"
+        and Options.Default
+        or Color3.new(1, 1, 1)
+
+    local Hue, Sat, Vib = Value:ToHSV()
+    local Transparency = math.clamp(
+        tonumber(Options.Transparency) or 0,
+        0,
+        1
+    )
+
+    local PickerButton = New("TextButton", {
+        Name = "ColorButton_" .. Key,
+        AnchorPoint = Vector2.new(1, 0.5),
+        Size = UDim2.new(0, 20, 0, 20),
+        BackgroundColor3 = Value,
+        BorderSizePixel = 0,
+        AutoButtonColor = false,
+        Text = "",
+        ZIndex = Toggle.Container.ZIndex + 3,
+        Parent = Toggle.Container,
+    })
+
+    Corner(PickerButton, 4)
+    Stroke(PickerButton, Library.Theme.Outline, 0.08, 1)
+    PickerButton:SetAttribute("MoonHubAddonWidth", 20)
+
+    local Picker = {
+        Type = "ColorPicker",
+        Key = Key,
+        Value = Value,
+        Transparency = Transparency,
+        Title = tostring(Options.Title or "Color Picker"),
+        Container = Toggle.Container,
+        Button = PickerButton,
+        Toggle = Toggle,
+        Callback = Options.Callback or function() end,
+        Changed = Options.Changed or function() end,
+        Hue = Hue,
+        Sat = Sat,
+        Vib = Vib,
+    }
+
+    setmetatable(Picker, {__index = ElementMethods})
+
+    local Popup
+    local SVBox
+    local HueBar
+    local TransparencyBar
+    local HexBox
+    local RGBLabel
+    local DragSV = false
+    local DragHue = false
+    local DragTransparency = false
+
+    local function FireChanged()
+        task.spawn(function()
+            pcall(Picker.Callback, Picker.Value)
+        end)
+        task.spawn(function()
+            pcall(Picker.Changed, Picker.Value)
+        end)
+    end
+
+    local function UpdateButton()
+        if not PickerButton.Parent then
+            return
+        end
+
+        PickerButton.BackgroundColor3 = Picker.Value
+        local StrokeObject = PickerButton:FindFirstChildOfClass("UIStroke")
+        if StrokeObject then
+            local H, S, V = Picker.Value:ToHSV()
+            StrokeObject.Color = Color3.fromHSV(H, math.max(0.25, S), math.max(0.25, V))
+        end
+    end
+
+    local function UpdatePopup()
+        if not Popup or not Popup.Parent then
+            return
+        end
+
+        local H = Hue
+        local S = Sat
+        local V = Vib
+
+        if SVBox then
+            local Cross = SVBox:FindFirstChild("SVPicker")
+            if Cross then
+                Cross.Position = UDim2.new(S, -4, 1 - V, -4)
+            end
+        end
+
+        if HueBar then
+            local HueMarker = HueBar:FindFirstChild("HueMarker")
+            if HueMarker then
+                HueMarker.Position = UDim2.new(0, 0, H, -2)
+            end
+        end
+
+        if TransparencyBar then
+            local TransparencyMarker = TransparencyBar:FindFirstChild("TransparencyMarker")
+            if TransparencyMarker then
+                TransparencyMarker.Position = UDim2.new(Transparency, -2, 0.5, -5)
+            end
+        end
+
+        if HexBox then
+            HexBox.Text = string.format("#%02X%02X%02X",
+                math.floor(Picker.Value.R * 255 + 0.5),
+                math.floor(Picker.Value.G * 255 + 0.5),
+                math.floor(Picker.Value.B * 255 + 0.5)
+            )
+        end
+
+        if RGBLabel then
+            RGBLabel.Text = string.format(
+                "RGB  %d, %d, %d",
+                math.floor(Picker.Value.R * 255 + 0.5),
+                math.floor(Picker.Value.G * 255 + 0.5),
+                math.floor(Picker.Value.B * 255 + 0.5)
+            )
+        end
+    end
+
+    local function SetFromHSV(NewH, NewS, NewV, NewTransparency, Fire)
+        Hue = math.clamp(NewH or Hue, 0, 1)
+        Sat = math.clamp(NewS or Sat, 0, 1)
+        Vib = math.clamp(NewV or Vib, 0, 1)
+
+        if NewTransparency ~= nil then
+            Transparency = math.clamp(NewTransparency, 0, 1)
+        end
+
+        Picker.Hue = Hue
+        Picker.Sat = Sat
+        Picker.Vib = Vib
+        Picker.Transparency = Transparency
+        Picker.Value = Color3.fromHSV(Hue, Sat, Vib)
+
+        UpdateButton()
+        UpdatePopup()
+
+        if Fire then
+            FireChanged()
+        end
+    end
+
+    local function SetFromRGB(Color, NewTransparency, Fire)
+        if typeof(Color) ~= "Color3" then
+            return
+        end
+
+        local H, S, V = Color:ToHSV()
+        SetFromHSV(H, S, V, NewTransparency, Fire)
+    end
+
+    local function BuildPopup()
+        if Popup and Popup.Parent then
+            return
+        end
+
+        local Gui = EnsureColorPickerGui()
+
+        Popup = New("Frame", {
+            Name = "ColorPickerPopup",
+            Size = UDim2.fromOffset(238, Options.Transparency ~= nil and 252 or 220),
+            BackgroundColor3 = Library.Theme.Panel,
+            BorderSizePixel = 0,
+            ZIndex = 200,
+            Parent = Gui,
+        })
+
+        Corner(Popup, 7)
+        Stroke(Popup, Library.Theme.Outline, 0.05, 1)
+
+        local Title = New("TextLabel", {
+            Name = "Title",
+            Position = UDim2.fromOffset(12, 8),
+            Size = UDim2.new(1, -24, 0, 20),
+            BackgroundTransparency = 1,
+            Text = Picker.Title,
+            TextColor3 = Library.Theme.TextBright,
+            TextSize = 11,
+            Font = Enum.Font.GothamBold,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 201,
+            Parent = Popup,
+        })
+
+        local Close = New("TextButton", {
+            Name = "Close",
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -8, 0, 7),
+            Size = UDim2.fromOffset(20, 20),
+            BackgroundTransparency = 1,
+            Text = "×",
+            TextColor3 = Library.Theme.TextDim,
+            TextSize = 16,
+            Font = Enum.Font.GothamBold,
+            AutoButtonColor = false,
+            ZIndex = 202,
+            Parent = Popup,
+        })
+
+        Close.MouseButton1Click:Connect(HideColorPicker)
+
+        SVBox = New("Frame", {
+            Name = "SaturationValue",
+            Position = UDim2.fromOffset(12, 34),
+            Size = UDim2.fromOffset(184, 138),
+            BackgroundColor3 = Color3.fromHSV(Hue, 1, 1),
+            BorderSizePixel = 0,
+            ClipsDescendants = true,
+            ZIndex = 201,
+            Parent = Popup,
+        })
+
+        Corner(SVBox, 5)
+        Stroke(SVBox, Library.Theme.OutlineSoft, 0.10, 1)
+
+        local WhiteGradient = New("UIGradient", {
+            Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+                ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
+            }),
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0),
+                NumberSequenceKeypoint.new(1, 1),
+            }),
+            Rotation = 0,
+            Parent = SVBox,
+        })
+
+        local BlackOverlay = New("Frame", {
+            Name = "BlackOverlay",
+            Size = UDim2.fromScale(1, 1),
+            BackgroundColor3 = Color3.new(0, 0, 0),
+            BorderSizePixel = 0,
+            ZIndex = 202,
+            Parent = SVBox,
+        })
+
+        Corner(BlackOverlay, 5)
+
+        New("UIGradient", {
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1),
+                NumberSequenceKeypoint.new(1, 0),
+            }),
+            Rotation = 90,
+            Parent = BlackOverlay,
+        })
+
+        local Cross = New("Frame", {
+            Name = "SVPicker",
+            Size = UDim2.fromOffset(8, 8),
+            Position = UDim2.new(Sat, -4, 1 - Vib, -4),
+            BackgroundColor3 = Color3.new(1, 1, 1),
+            BorderSizePixel = 0,
+            ZIndex = 204,
+            Parent = SVBox,
+        })
+
+        Corner(Cross, 10)
+        Stroke(Cross, Color3.new(0, 0, 0), 0, 1)
+
+        HueBar = New("Frame", {
+            Name = "Hue",
+            Position = UDim2.fromOffset(202, 34),
+            Size = UDim2.fromOffset(24, 138),
+            BorderSizePixel = 0,
+            BackgroundColor3 = Color3.new(1, 1, 1),
+            ZIndex = 201,
+            Parent = Popup,
+        })
+
+        Corner(HueBar, 5)
+        Stroke(HueBar, Library.Theme.OutlineSoft, 0.10, 1)
+
+        local HueGradient = New("UIGradient", {
+            Rotation = 90,
+            Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
+                ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
+                ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+                ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 255, 255)),
+                ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
+                ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
+                ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0)),
+            }),
+            Parent = HueBar,
+        })
+
+        local HueMarker = New("Frame", {
+            Name = "HueMarker",
+            Size = UDim2.new(1, 0, 0, 4),
+            Position = UDim2.new(0, 0, Hue, -2),
+            BackgroundColor3 = Color3.new(1, 1, 1),
+            BorderSizePixel = 0,
+            ZIndex = 204,
+            Parent = HueBar,
+        })
+
+        Stroke(HueMarker, Color3.new(0, 0, 0), 0, 1)
+
+        local BottomY = 180
+        if Options.Transparency ~= nil then
+            TransparencyBar = New("Frame", {
+                Name = "Transparency",
+                Position = UDim2.fromOffset(12, 181),
+                Size = UDim2.fromOffset(214, 14),
+                BackgroundColor3 = Picker.Value,
+                BorderSizePixel = 0,
+                ZIndex = 201,
+                Parent = Popup,
+            })
+
+            Corner(TransparencyBar, 4)
+            Stroke(TransparencyBar, Library.Theme.OutlineSoft, 0.10, 1)
+
+            local Checker = New("Frame", {
+                Size = UDim2.fromScale(1, 1),
+                BackgroundColor3 = Color3.fromRGB(180, 180, 180),
+                BorderSizePixel = 0,
+                ZIndex = 201,
+                Parent = TransparencyBar,
+            })
+
+            Corner(Checker, 4)
+
+            New("UIGradient", {
+                Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(1, 1, 1)),
+                Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 1),
+                    NumberSequenceKeypoint.new(1, 0),
+                }),
+                Parent = Checker,
+            })
+
+            local TransparencyColor = New("Frame", {
+                Size = UDim2.fromScale(1, 1),
+                BackgroundColor3 = Picker.Value,
+                BorderSizePixel = 0,
+                ZIndex = 202,
+                Parent = TransparencyBar,
+            })
+
+            Corner(TransparencyColor, 4)
+
+            New("UIGradient", {
+                Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 0),
+                    NumberSequenceKeypoint.new(1, 1),
+                }),
+                Parent = TransparencyColor,
+            })
+
+            New("Frame", {
+                Name = "TransparencyMarker",
+                Size = UDim2.fromOffset(4, 12),
+                Position = UDim2.new(Transparency, -2, 0.5, -5),
+                BackgroundColor3 = Color3.new(1, 1, 1),
+                BorderSizePixel = 0,
+                ZIndex = 204,
+                Parent = TransparencyBar,
+            })
+
+            BottomY = 203
+        else
+            TransparencyBar = nil
+        end
+
+        HexBox = New("TextBox", {
+            Name = "Hex",
+            Position = UDim2.fromOffset(12, BottomY),
+            Size = UDim2.fromOffset(92, 24),
+            BackgroundColor3 = Library.Theme.Element,
+            BorderSizePixel = 0,
+            ClearTextOnFocus = false,
+            Text = "",
+            PlaceholderText = "#FFFFFF",
+            TextColor3 = Library.Theme.Text,
+            PlaceholderColor3 = Library.Theme.Placeholder,
+            TextSize = 10,
+            Font = Enum.Font.GothamBold,
+            ZIndex = 203,
+            Parent = Popup,
+        })
+
+        Corner(HexBox, 4)
+        Stroke(HexBox, Library.Theme.Outline, 0.10, 1)
+
+        RGBLabel = New("TextLabel", {
+            Position = UDim2.fromOffset(112, BottomY),
+            Size = UDim2.fromOffset(114, 24),
+            BackgroundTransparency = 1,
+            Text = "",
+            TextColor3 = Library.Theme.TextDim,
+            TextSize = 9,
+            Font = Enum.Font.GothamBold,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Center,
+            ZIndex = 203,
+            Parent = Popup,
+        })
+
+        local function UpdateSVFromInput(Input)
+            local Abs = SVBox.AbsolutePosition
+            local Size = SVBox.AbsoluteSize
+            local X = math.clamp((Input.Position.X - Abs.X) / math.max(1, Size.X), 0, 1)
+            local Y = math.clamp((Input.Position.Y - Abs.Y) / math.max(1, Size.Y), 0, 1)
+            SetFromHSV(Hue, X, 1 - Y, nil, true)
+        end
+
+        local function UpdateHueFromInput(Input)
+            local Abs = HueBar.AbsolutePosition
+            local Size = HueBar.AbsoluteSize
+            local Y = math.clamp((Input.Position.Y - Abs.Y) / math.max(1, Size.Y), 0, 1)
+            SetFromHSV(Y, Sat, Vib, nil, true)
+        end
+
+        local function UpdateTransparencyFromInput(Input)
+            if not TransparencyBar then
+                return
+            end
+
+            local Abs = TransparencyBar.AbsolutePosition
+            local Size = TransparencyBar.AbsoluteSize
+            local X = math.clamp((Input.Position.X - Abs.X) / math.max(1, Size.X), 0, 1)
+            SetFromHSV(Hue, Sat, Vib, X, true)
+        end
+
+        SVBox.InputBegan:Connect(function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1
+                or Input.UserInputType == Enum.UserInputType.Touch then
+                DragSV = true
+                UpdateSVFromInput(Input)
+            end
+        end)
+
+        HueBar.InputBegan:Connect(function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1
+                or Input.UserInputType == Enum.UserInputType.Touch then
+                DragHue = true
+                UpdateHueFromInput(Input)
+            end
+        end)
+
+        if TransparencyBar then
+            TransparencyBar.InputBegan:Connect(function(Input)
+                if Input.UserInputType == Enum.UserInputType.MouseButton1
+                    or Input.UserInputType == Enum.UserInputType.Touch then
+                    DragTransparency = true
+                    UpdateTransparencyFromInput(Input)
+                end
+            end)
+        end
+
+        UserInputService.InputChanged:Connect(function(Input)
+            if Input.UserInputType ~= Enum.UserInputType.MouseMovement
+                and Input.UserInputType ~= Enum.UserInputType.Touch then
+                return
+            end
+
+            if DragSV then
+                UpdateSVFromInput(Input)
+            elseif DragHue then
+                UpdateHueFromInput(Input)
+            elseif DragTransparency then
+                UpdateTransparencyFromInput(Input)
+            end
+        end)
+
+        UserInputService.InputEnded:Connect(function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1
+                or Input.UserInputType == Enum.UserInputType.Touch then
+                DragSV = false
+                DragHue = false
+                DragTransparency = false
+            end
+        end)
+
+        HexBox.FocusLost:Connect(function()
+            local Clean = HexBox.Text:gsub("#", ""):gsub("%s+", "")
+            if #Clean == 6 then
+                local Success, Color = pcall(function()
+                    return Color3.fromHex(Clean)
+                end)
+
+                if Success and typeof(Color) == "Color3" then
+                    SetFromRGB(Color, nil, true)
+                end
+            end
+
+            UpdatePopup()
+        end)
+
+        UpdatePopup()
+    end
+
+    function Picker:Show()
+        BuildPopup()
+
+        if ActiveColorPicker and ActiveColorPicker ~= Picker then
+            ActiveColorPicker:Hide()
+        end
+
+        ActiveColorPicker = Picker
+        Popup.Visible = true
+
+        local Camera = workspace.CurrentCamera
+        local MousePosition = UserInputService:GetMouseLocation()
+        local ScreenSize = Camera and Camera.ViewportSize or Vector2.new(1920, 1080)
+
+        local X = MousePosition.X + 12
+        local Y = MousePosition.Y + 12
+
+        if PickerButton.AbsolutePosition.X > 0 then
+            X = PickerButton.AbsolutePosition.X + PickerButton.AbsoluteSize.X + 8
+            Y = PickerButton.AbsolutePosition.Y
+        end
+
+        if X + Popup.AbsoluteSize.X > ScreenSize.X - 6 then
+            X = PickerButton.AbsolutePosition.X - Popup.AbsoluteSize.X - 8
+        end
+
+        if Y + Popup.AbsoluteSize.Y > ScreenSize.Y - 6 then
+            Y = ScreenSize.Y - Popup.AbsoluteSize.Y - 6
+        end
+
+        Popup.Position = UDim2.fromOffset(
+            math.max(6, X),
+            math.max(6, Y)
+        )
+
+        UpdatePopup()
+    end
+
+    function Picker:Hide()
+        if Popup then
+            Popup.Visible = false
+        end
+
+        DragSV = false
+        DragHue = false
+        DragTransparency = false
+
+        if ActiveColorPicker == Picker then
+            ActiveColorPicker = nil
+        end
+    end
+
+    function Picker:OnChanged(Callback)
+        if type(Callback) == "function" then
+            self.Changed = Callback
+        end
+        return self
+    end
+
+    function Picker:SetValue(NewHSV, NewTransparency)
+        if type(NewHSV) == "table" then
+            local H = NewHSV.H or NewHSV[1] or Hue
+            local S = NewHSV.S or NewHSV[2] or Sat
+            local V = NewHSV.V or NewHSV[3] or Vib
+            SetFromHSV(H, S, V, NewTransparency, true)
+        elseif typeof(NewHSV) == "Color3" then
+            SetFromRGB(NewHSV, NewTransparency, true)
+        end
+    end
+
+    function Picker:SetValueRGB(Color, NewTransparency)
+        SetFromRGB(Color, NewTransparency, true)
+    end
+
+    function Picker:GetValue()
+        return self.Value
+    end
+
+    function Picker:Destroy()
+        self:Hide()
+
+        for Index, Control in ipairs(Toggle._AddonControls) do
+            if Control == PickerButton then
+                table.remove(Toggle._AddonControls, Index)
+                break
+            end
+        end
+
+        for Index, Item in ipairs(Toggle._ColorPickers) do
+            if Item == Picker then
+                table.remove(Toggle._ColorPickers, Index)
+                break
+            end
+        end
+
+        if Library.Options[Key] == Picker then
+            Library.Options[Key] = nil
+        end
+
+        if PickerButton then
+            PickerButton:Destroy()
+        end
+
+        Toggle:_RefreshAddonLayout()
+    end
+
+    PickerButton.MouseButton1Click:Connect(function()
+        if ActiveColorPicker == Picker then
+            Picker:Hide()
+        else
+            Picker:Show()
+        end
+    end)
+
+    PickerButton.MouseEnter:Connect(function()
+        Tween(PickerButton, 0.10, {
+            BackgroundColor3 = Library.Theme.ElementHover,
+        })
+    end)
+
+    PickerButton.MouseLeave:Connect(function()
+        Tween(PickerButton, 0.10, {
+            BackgroundColor3 = Picker.Value,
+        })
+    end)
+
+    table.insert(Toggle._AddonControls, PickerButton)
+    table.insert(Toggle._ColorPickers, Picker)
+    Library.Options[Key] = Picker
+
+    Toggle:_RefreshAddonLayout()
+    UpdateButton()
+
+    return Picker
+end
+
+-- Toggle:AddColorPicker(...) is the Obsidian-style API.
+function ElementMethods:AddColorPicker(Identifier, Info)
+    if self.Type ~= "Toggle" then
+        warn("[MoonHub] AddColorPicker can only be used on a Toggle.")
+        return nil
+    end
+
+    return CreateColorPicker(self, Identifier, Info)
 end
 
 -- Toggle:AddKeyPicker(...) is the Obsidian-style API.
@@ -3786,6 +4514,32 @@ function Library:RefreshTheme()
 
             if Label then
                 Label.TextColor3 = Toggle.Value and Theme.TextBright or Theme.Text
+            end
+
+            if Toggle._KeyPicker then
+                local KeyPicker = Toggle._KeyPicker
+                local KeyButton = KeyPicker.Button or Container:FindFirstChild("KeyButton")
+                if KeyButton then
+                    KeyButton.BackgroundColor3 = KeyPicker.Listening
+                        and Theme.ElementHover
+                        or (KeyPicker.Active and Theme.Selected or Theme.Panel)
+                    KeyButton.TextColor3 = KeyPicker.Listening or KeyPicker.Active
+                        and Theme.TextBright
+                        or Theme.TextDim
+                    ApplyStroke(KeyButton, Theme.Outline, 0.10)
+                end
+            end
+
+            for _, ColorPicker in ipairs(Toggle._ColorPickers or {}) do
+                local ColorButton = ColorPicker.Button
+                if ColorButton then
+                    ColorButton.BackgroundColor3 = ColorPicker.Value
+                    ApplyStroke(ColorButton, Theme.Outline, 0.08)
+                end
+            end
+
+            if Toggle._RefreshAddonLayout then
+                Toggle:_RefreshAddonLayout()
             end
         end)
     end
