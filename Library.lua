@@ -740,6 +740,23 @@ end
 
 local ElementMethods = {}
 
+-- Obsidian-style OnChanged support.
+-- This is shared by Toggle/Slider/Dropdown/Input/etc. and stores the
+-- listener in the element's Changed callback, so code such as:
+-- Toggles.aim_Enabled:OnChanged(function()
+--     State.SilentAimSettings.Enabled = Toggles.aim_Enabled.Value
+-- end)
+-- works directly.
+function ElementMethods:OnChanged(Callback)
+    if type(Callback) ~= "function" then
+        return self
+    end
+
+    self.Changed = Callback
+
+    return self
+end
+
 function ElementMethods:SetVisible(Value)
     self.Container.Visible = Value ~= false
 end
