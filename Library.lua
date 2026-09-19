@@ -835,7 +835,7 @@ local function CreateToggle(Groupbox, Identifier, Info)
 
     Corner(Container, 5)
     Stroke(Container, Library.Theme.Outline, 0.25, 1)
-    Container:SetAttribute("SearchName", NormalizeName(Key .. " " .. Text))
+    Container:SetAttribute("SearchName", NormalizeName(Text))
 
     local Label = New("TextLabel", {
         Name = "Text",
@@ -1171,7 +1171,7 @@ local function CreateKeyPicker(Groupbox, Identifier, Info)
 
     Corner(Container, 5)
     Stroke(Container, Library.Theme.Outline, 0.25, 1)
-    Container:SetAttribute("SearchName", NormalizeName(Key .. " " .. Text))
+    Container:SetAttribute("SearchName", NormalizeName(Text))
 
     local Label = New("TextLabel", {
         Name = "Text",
@@ -2475,7 +2475,7 @@ local function CreateDropdown(Groupbox, Identifier, Info)
 
     Corner(Button, 5)
     Stroke(Button, Library.Theme.Outline, 0.25, 1)
-    Button:SetAttribute("SearchName", NormalizeName(Key .. " " .. Text))
+    Button:SetAttribute("SearchName", NormalizeName(Text))
 
     local Label = New("TextLabel", {
         Position = UDim2.new(0, 11, 0, 0),
@@ -2783,7 +2783,7 @@ local function CreateButton(Groupbox, Identifier, Info)
 
     Corner(Container, 5)
     Stroke(Container, Library.Theme.Outline, 0.25, 1)
-    Container:SetAttribute("SearchName", NormalizeName(Key .. " " .. Text))
+    Container:SetAttribute("SearchName", NormalizeName(Text))
 
     local Button = {
         Type = "Button",
@@ -2923,7 +2923,7 @@ local function CreateInput(Groupbox, Identifier, Info)
 
     Corner(Box, 5)
     Stroke(Box, Library.Theme.Outline, 0.25, 1)
-    Box:SetAttribute("SearchName", NormalizeName(Key .. " " .. Text))
+    Box:SetAttribute("SearchName", NormalizeName(Text))
 
     New("UIPadding", {
         PaddingLeft = UDim.new(0, 10),
@@ -3026,7 +3026,7 @@ local function CreateSlider(Parent, Key, Options)
         Parent = Holder,
     })
 
-    Holder:SetAttribute("SearchName", NormalizeName(Key .. " " .. Text))
+    Holder:SetAttribute("SearchName", NormalizeName(Text))
 
     local ValueLabel = New("TextLabel", {
         Position = UDim2.new(0.7, 0, 0, 0),
@@ -3643,13 +3643,7 @@ function WindowMethods:ApplySearch()
 
                     if SearchName then
                         Descendant.Visible =
-                            Search == ""
-                            or string.find(
-                                SearchName,
-                                Search,
-                                1,
-                                true
-                            ) ~= nil
+                            Search == "" or string.find(SearchName, Search, 1, true) ~= nil
                     end
                 end
             end
