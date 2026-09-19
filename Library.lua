@@ -57,28 +57,28 @@ local Library = {}
 Library.DefaultTheme = {
     -- MoonHub: dark navy palette based on the supplied GUI.
     -- Keep the base very dark; blue is used only for readable controls.
-Background = Color3.fromRGB(7, 25, 46),
-    Sidebar = Color3.fromRGB(8, 29, 49),
-    Panel = Color3.fromRGB(10, 34, 55),
+Background = Color3.fromRGB(5, 18, 31),
+    Sidebar = Color3.fromRGB(7, 23, 39),
+    Panel = Color3.fromRGB(8, 27, 44),
 
-    Element = Color3.fromRGB(30, 68, 96),
-    ElementHover = Color3.fromRGB(42, 91, 120),
-    Selected = Color3.fromRGB(31, 72, 100),
+    Element = Color3.fromRGB(24, 58, 88),
+    ElementHover = Color3.fromRGB(38, 91, 132),
+    Selected = Color3.fromRGB(35, 82, 110),
 
-    Outline = Color3.fromRGB(100, 140, 165),
-    OutlineSoft = Color3.fromRGB(72, 112, 145),
+    Outline = Color3.fromRGB(78, 112, 136),
+    OutlineSoft = Color3.fromRGB(60, 94, 119),
 
     Text = Color3.fromRGB(255, 255, 255),
     TextDim = Color3.fromRGB(190, 208, 222),
     TextBright = Color3.fromRGB(255, 255, 255),
     Placeholder = Color3.fromRGB(165, 185, 200),
 
-    ToggleOff = Color3.fromRGB(8, 25, 42),
-    ToggleOn = Color3.fromRGB(32, 76, 105),
-    KnobOff = Color3.fromRGB(235, 243, 249),
+    ToggleOff = Color3.fromRGB(12, 30, 45),
+    ToggleOn = Color3.fromRGB(42, 104, 138),
+    KnobOff = Color3.fromRGB(178, 193, 205),
 
-    Accent = Color3.fromRGB(32, 76, 105),
-    AccentSoft = Color3.fromRGB(20, 50, 72),
+    Accent = Color3.fromRGB(42, 104, 138),
+    AccentSoft = Color3.fromRGB(17, 43, 61),
 
     Success = Color3.fromRGB(120, 220, 150),
     Warning = Color3.fromRGB(235, 190, 90),
@@ -835,6 +835,7 @@ local function CreateToggle(Groupbox, Identifier, Info)
     })
 
     Corner(Switch, 20)
+    Stroke(Switch, Library.Theme.OutlineSoft, 0.22, 1)
 
     local Knob = New("Frame", {
         Name = "Knob",
@@ -846,6 +847,7 @@ local function CreateToggle(Groupbox, Identifier, Info)
     })
 
     Corner(Knob, 20)
+    Stroke(Knob, Library.Theme.Outline, 0.10, 1)
 
     local Toggle = {
         Type = "Toggle",
@@ -865,15 +867,36 @@ local function CreateToggle(Groupbox, Identifier, Info)
     end
 
     local function UpdateVisual()
+        local SwitchStroke = Switch:FindFirstChildOfClass("UIStroke")
+        local KnobStroke = Knob:FindFirstChildOfClass("UIStroke")
+
         if Value then
             Tween(Switch, 0.15, {
                 BackgroundColor3 = Library.Theme.ToggleOn,
             })
+            local SwitchStroke = Switch:FindFirstChild("ToggleStroke")
+            if SwitchStroke then
+                Tween(SwitchStroke, 0.15, {Color = Library.Theme.ToggleOn, Transparency = 0})
+            end
+
+            if SwitchStroke then
+                Tween(SwitchStroke, 0.15, {
+                    Color = Library.Theme.ToggleOn,
+                    Transparency = 0.02,
+                })
+            end
 
             Tween(Knob, 0.15, {
                 Position = UDim2.new(1, -14, 0.5, -6),
                 BackgroundColor3 = Library.Theme.TextBright,
             })
+
+            if KnobStroke then
+                Tween(KnobStroke, 0.15, {
+                    Color = Library.Theme.TextBright,
+                    Transparency = 0.02,
+                })
+            end
 
             Tween(Label, 0.15, {
                 TextColor3 = Library.Theme.TextBright,
@@ -882,11 +905,29 @@ local function CreateToggle(Groupbox, Identifier, Info)
             Tween(Switch, 0.15, {
                 BackgroundColor3 = Library.Theme.ToggleOff,
             })
+            local SwitchStroke = Switch:FindFirstChild("ToggleStroke")
+            if SwitchStroke then
+                Tween(SwitchStroke, 0.15, {Color = Library.Theme.OutlineSoft, Transparency = 0.15})
+            end
+
+            if SwitchStroke then
+                Tween(SwitchStroke, 0.15, {
+                    Color = Library.Theme.OutlineSoft,
+                    Transparency = 0.22,
+                })
+            end
 
             Tween(Knob, 0.15, {
                 Position = UDim2.new(0, 2, 0.5, -6),
                 BackgroundColor3 = Library.Theme.KnobOff,
             })
+
+            if KnobStroke then
+                Tween(KnobStroke, 0.15, {
+                    Color = Library.Theme.Outline,
+                    Transparency = 0.10,
+                })
+            end
 
             Tween(Label, 0.15, {
                 TextColor3 = Library.Theme.Text,
@@ -2210,13 +2251,13 @@ function WindowMethods:AddTab(Name)
         Size = UDim2.new(1, -24, 1, 0),
         BackgroundTransparency = 1,
         Text = TabName,
-        TextColor3 = Library.Theme.TextDim,
+        TextColor3 = Library.Theme.TextBright,
         TextSize = 11,
         Font = Enum.Font.GothamBold,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextYAlignment = Enum.TextYAlignment.Center,
         TextStrokeColor3 = Library.Theme.Background,
-        TextStrokeTransparency = 0.82,
+        TextStrokeTransparency = 0.88,
         Parent = TabButton,
     })
 
@@ -2318,14 +2359,14 @@ function WindowMethods:AddTab(Name)
                 Library.Theme.Element
 
             self.ActiveTab.Button.TextColor3 =
-                Library.Theme.TextDim
+                Library.Theme.TextBright
 
             local OldText =
                 self.ActiveTab.Button:FindFirstChild("Text")
 
             if OldText then
                 OldText.TextColor3 =
-                    Library.Theme.TextDim
+                    Library.Theme.TextBright
             end
         end
 
@@ -2365,7 +2406,7 @@ function WindowMethods:AddTab(Name)
 
             Tween(TabText, 0.12, {
                 TextColor3 =
-                    Library.Theme.TextDim
+                    Library.Theme.TextBright
             })
         end
     end)
@@ -2515,82 +2556,79 @@ local function RefreshMoonHubBackgrounds(Frame, TopBar, Explorer, Modules, Conte
         return
     end
 
-    local Enabled = Library.Theme.GradientEnabled == true
+    local Theme = Library.Theme
+    local Enabled = Theme.GradientEnabled == true
 
-    -- IMPORTANT:
-    -- The outer MainFrame itself must stay a completely solid color.
-    -- Its UIStroke is an INNER stroke, so putting a gradient directly on
-    -- MainFrame makes the anti-aliased edge visually blend with the gradient.
-    -- That creates the faint blue/light color shift on the extreme outer edge.
-    --
-    -- The gradient therefore lives on a 1px inset background layer instead.
-    -- This leaves the complete outer outline sitting over a single flat color.
-    -- Remove any legacy gradient that may have been attached directly to MainFrame.
-    local LegacyGradient = Frame:FindFirstChild("MoonHubGradient")
-    if LegacyGradient then
-        LegacyGradient:Destroy()
-    end
+    -- MainFrame is ALWAYS solid. The visible outline is a separate overlay,
+    -- so no gradient can bleed into the outer edge.
+    Frame.BackgroundColor3 = Theme.Background
+    Frame.BackgroundTransparency = 0
 
     local BackgroundVisual = Frame:FindFirstChild("MainBackgroundVisual")
     if BackgroundVisual then
-        SetMoonHubGradient(BackgroundVisual, {
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(7, 25, 46)),
-            ColorSequenceKeypoint.new(0.20, Color3.fromRGB(10, 36, 61)),
-            ColorSequenceKeypoint.new(0.42, Color3.fromRGB(18, 57, 89)),
-            ColorSequenceKeypoint.new(0.62, Color3.fromRGB(20, 62, 95)),
-            ColorSequenceKeypoint.new(0.80, Color3.fromRGB(14, 46, 74)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(7, 25, 46)),
-        }, 35)
+        BackgroundVisual.BackgroundColor3 = Theme.Background
+        local Gradient = BackgroundVisual:FindFirstChild("MoonHubGradient")
+        if Gradient then Gradient.Enabled = Enabled end
     end
 
-    SetMoonHubGradient(TopBar, {
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(9, 32, 54)),
-        ColorSequenceKeypoint.new(0.20, Color3.fromRGB(12, 43, 69)),
-        ColorSequenceKeypoint.new(0.42, Color3.fromRGB(20, 59, 89)),
-        ColorSequenceKeypoint.new(0.62, Color3.fromRGB(22, 64, 96)),
-        ColorSequenceKeypoint.new(0.80, Color3.fromRGB(15, 48, 75)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 30, 51)),
-    }, 35)
+    -- MoonHub is the only nebula-gradient theme. Other themes use their own
+    -- flat colors, so changing theme can never leave MoonHub blue behind.
+    if Enabled then
+        SetMoonHubGradient(BackgroundVisual, {
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(3, 10, 22)),
+            ColorSequenceKeypoint.new(0.18, Color3.fromRGB(5, 20, 39)),
+            ColorSequenceKeypoint.new(0.38, Color3.fromRGB(8, 31, 58)),
+            ColorSequenceKeypoint.new(0.55, Color3.fromRGB(12, 45, 78)),
+            ColorSequenceKeypoint.new(0.72, Color3.fromRGB(7, 29, 55)),
+            ColorSequenceKeypoint.new(0.88, Color3.fromRGB(4, 17, 35)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(2, 9, 20)),
+        }, 28)
 
-    local SidebarGradient = {
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(8, 29, 49)),
-        ColorSequenceKeypoint.new(0.20, Color3.fromRGB(11, 39, 62)),
-        ColorSequenceKeypoint.new(0.42, Color3.fromRGB(17, 52, 80)),
-        ColorSequenceKeypoint.new(0.62, Color3.fromRGB(19, 58, 87)),
-        ColorSequenceKeypoint.new(0.80, Color3.fromRGB(13, 44, 70)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 29, 49)),
-    }
+        SetMoonHubGradient(TopBar, {
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(5, 16, 31)),
+            ColorSequenceKeypoint.new(0.30, Color3.fromRGB(8, 29, 51)),
+            ColorSequenceKeypoint.new(0.55, Color3.fromRGB(13, 43, 72)),
+            ColorSequenceKeypoint.new(0.78, Color3.fromRGB(8, 27, 49)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(4, 13, 27)),
+        }, 25)
 
-    SetMoonHubGradient(Explorer, SidebarGradient, 35)
-    SetMoonHubGradient(Modules, SidebarGradient, 35)
+        local NebulaSide = {
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(4, 14, 28)),
+            ColorSequenceKeypoint.new(0.35, Color3.fromRGB(6, 24, 45)),
+            ColorSequenceKeypoint.new(0.58, Color3.fromRGB(9, 34, 58)),
+            ColorSequenceKeypoint.new(0.82, Color3.fromRGB(5, 21, 40)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(3, 12, 25)),
+        }
+        SetMoonHubGradient(Explorer, NebulaSide, 25)
+        SetMoonHubGradient(Modules, NebulaSide, 25)
 
-    SetMoonHubGradient(Content, {
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(7, 25, 46)),
-        ColorSequenceKeypoint.new(0.50, Color3.fromRGB(14, 46, 74)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(7, 25, 46)),
-    }, 35)
+        SetMoonHubGradient(Content, {
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(3, 11, 23)),
+            ColorSequenceKeypoint.new(0.45, Color3.fromRGB(7, 26, 48)),
+            ColorSequenceKeypoint.new(0.72, Color3.fromRGB(9, 31, 55)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(3, 11, 23)),
+        }, 25)
 
-    SetMoonHubGradient(SearchBox, {
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 34, 55)),
-        ColorSequenceKeypoint.new(0.35, Color3.fromRGB(15, 49, 75)),
-        ColorSequenceKeypoint.new(0.65, Color3.fromRGB(22, 65, 95)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(11, 37, 59)),
-    }, 35)
-
-    for _, Object in ipairs({
-        Frame:FindFirstChild("MainBackgroundVisual"),
-        TopBar,
-        Explorer,
-        Modules,
-        Content,
-        SearchBox
-    }) do
-        if Object then
-            local Gradient = Object:FindFirstChild("MoonHubGradient")
-            if Gradient then
-                Gradient.Enabled = Enabled
+        SetMoonHubGradient(SearchBox, {
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(8, 25, 44)),
+            ColorSequenceKeypoint.new(0.45, Color3.fromRGB(13, 43, 68)),
+            ColorSequenceKeypoint.new(0.70, Color3.fromRGB(18, 55, 82)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(7, 23, 42)),
+        }, 20)
+    else
+        local Objects = {BackgroundVisual, TopBar, Explorer, Modules, Content, SearchBox}
+        for _, Object in ipairs(Objects) do
+            if Object then
+                local Gradient = Object:FindFirstChild("MoonHubGradient")
+                if Gradient then Gradient.Enabled = false end
             end
         end
+
+        if TopBar then TopBar.BackgroundColor3 = Theme.Panel end
+        if Explorer then Explorer.BackgroundColor3 = Theme.Sidebar end
+        if Modules then Modules.BackgroundColor3 = Theme.Sidebar end
+        if Content then Content.BackgroundColor3 = Theme.Background end
+        if SearchBox then SearchBox.BackgroundColor3 = Theme.Element end
     end
 
     EnsureMoonHubStars(Frame)
@@ -2640,12 +2678,6 @@ function Library:CreateWindow(Config)
     })
 
     Corner(Frame, 9)
-    Stroke(
-        Frame,
-        Library.Theme.OutlineSoft,
-        0,
-        1
-    )
 
     -- Solid layer directly under the outer stroke.
     -- The MoonHub gradient is applied to this layer instead of MainFrame,
@@ -2662,6 +2694,20 @@ function Library:CreateWindow(Config)
     })
 
     Corner(BackgroundVisual, 8)
+
+    -- Dedicated solid outer outline. This is drawn ABOVE every visual layer,
+    -- so the extreme edge can never inherit a nebula/gradient color.
+    local OuterOutline = New("Frame", {
+        Name = "MainOuterOutline",
+        Position = UDim2.fromOffset(0, 0),
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ZIndex = 50,
+        Parent = Frame,
+    })
+    Corner(OuterOutline, 9)
+    Stroke(OuterOutline, Library.Theme.OutlineSoft, 0, 1)
 
     EnsureMoonHubStars(Frame)
 
@@ -3167,10 +3213,7 @@ function Library:RefreshTheme()
         end
 
         if Object.Name == "MainFrame" then
-            -- MainFrame stays solid so the outer outline never blends with
-            -- a gradient at its anti-aliased edge.
             Object.BackgroundColor3 = Theme.Background
-            ApplyStroke(Object, Theme.OutlineSoft, 0)
 
             local BackgroundVisual = Object:FindFirstChild("MainBackgroundVisual")
             if BackgroundVisual then
@@ -3178,8 +3221,11 @@ function Library:RefreshTheme()
                 ApplyStroke(BackgroundVisual, Theme.Background, 1)
             end
         elseif Object.Name == "MainBackgroundVisual" then
-            -- Its visual colors are refreshed by RefreshMoonHubBackgrounds.
             Object.BackgroundColor3 = Theme.Background
+        elseif Object.Name == "MainOuterOutline" then
+            Object.BackgroundTransparency = 1
+            ApplyStroke(Object, Theme.OutlineSoft, 0)
+        elseif Object.Name == "TopBar" then
             Object.BackgroundColor3 = Theme.Panel
         elseif Object.Name == "Explorer" or Object.Name == "Modules" then
             Object.BackgroundColor3 = Theme.Sidebar
@@ -3245,6 +3291,16 @@ function Library:RefreshTheme()
             Object.BackgroundColor3 = Theme.Element
         elseif Object.Name == "OptionsFrame" then
             Object.BackgroundColor3 = Theme.Panel
+        elseif string.match(Object.Name, "Module$") and Object:IsA("TextButton") then
+            -- MoonHub module buttons intentionally keep the same solid blue
+            -- seen in the reference: dark UI around them, clear blue modules.
+            Object.BackgroundColor3 = Theme.Element
+            Object.TextColor3 = Theme.TextBright
+
+            local ModuleText = Object:FindFirstChild("Text")
+            if ModuleText and ModuleText:IsA("TextLabel") then
+                ModuleText.TextColor3 = Theme.TextBright
+            end
         elseif Object.Name == "DropdownButton" and Object:IsA("TextButton") then
             Object.BackgroundColor3 = Theme.Element
             Object.TextColor3 = Theme.Text
@@ -3327,10 +3383,12 @@ function Library:RefreshTheme()
 
             if Switch then
                 Switch.BackgroundColor3 = Toggle.Value and Theme.ToggleOn or Theme.ToggleOff
+                ApplyStroke(Switch, Toggle.Value and Theme.ToggleOn or Theme.Outline, Toggle.Value and 0.02 or 0.22)
             end
 
             if Knob then
                 Knob.BackgroundColor3 = Toggle.Value and Theme.TextBright or Theme.KnobOff
+                ApplyStroke(Knob, Toggle.Value and Theme.TextBright or Theme.Outline, Toggle.Value and 0.02 or 0.10)
                 Knob.Position = Toggle.Value
                     and UDim2.new(1, -14, 0.5, -6)
                     or UDim2.new(0, 2, 0.5, -6)
@@ -3340,6 +3398,25 @@ function Library:RefreshTheme()
                 Label.TextColor3 = Toggle.Value and Theme.TextBright or Theme.Text
             end
         end)
+    end
+
+    for _, Gui in ipairs(PlayerGui:GetChildren()) do
+        if Gui.Name == "MoonHub" then
+            local MainFrame = Gui:FindFirstChild("MainFrame")
+            local Modules = MainFrame and MainFrame:FindFirstChild("Modules")
+            local ModuleContainer = Modules and Modules:FindFirstChild("ModuleContainer")
+            if ModuleContainer then
+                for _, ModuleButton in ipairs(ModuleContainer:GetChildren()) do
+                    if ModuleButton:IsA("TextButton") then
+                        ModuleButton.BackgroundColor3 = Theme.Element
+                        local ModuleText = ModuleButton:FindFirstChild("Text")
+                        if ModuleText and ModuleText:IsA("TextLabel") then
+                            ModuleText.TextColor3 = Theme.TextBright
+                        end
+                    end
+                end
+            end
+        end
     end
 
     for _, Button in pairs(Library.Buttons) do
