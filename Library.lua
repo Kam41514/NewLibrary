@@ -1252,6 +1252,338 @@ local function CreateKeyPicker(Groupbox, Identifier, Info)
 end
 
 --//==================================================
+--// TOGGLE -> KEY PICKER (Obsidian-style)
+--//==================================================
+
+local function CreateToggleKeyPicker(Toggle, Identifier, Info)
+    local Key, Options = MakeKey(Identifier, Info)
+
+    Options = Options or {}
+
+    local CurrentKey = ResolveKey(
+        Options.Default
+        or Options.Key
+        or "RightShift"
+    )
+
+    local Mode = tostring(Options.Mode or "Toggle")
+    if Mode ~= "Toggle" and Mode ~= "Hold" then
+        Mode = "Toggle"
+    end
+
+    local SyncToggleState = Options.SyncToggleState == true
+    local Active = false
+    local Listening = false
+    local Destroyed = false
+
+    local Existing = Toggle._KeyPicker
+    if Existing and Existing.Destroy then
+        pcall(function()
+            Existing:Destroy()
+        end)
+    end
+
+    local KeyButton = New("TextButton", {
+        Name = "KeyButton",
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -46, 0.5, 0),
+        Size = UDim2.new(0, 58, 0, 22),
+        BackgroundColor3 = Library.Theme.Panel,
+        BorderSizePixel = 0,
+        AutoButtonColor = false,
+        Text = CurrentKey.Name,
+        TextColor3 = Library.Theme.TextDim,
+        TextSize = 9,
+        Font = Enum.Font.GothamBold,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        TextYAlignment = Enum.TextYAlignment.Center,
+        ZIndex = Toggle.Container.ZIndex + 2,
+        Parent = Toggle.Container,
+    })
+
+    Corner(KeyButton, 5)
+    Stroke(KeyButton, Library.Theme.Outline, 0.10, 1)
+
+    -- Switch'i key picker varken biraz sağa taşı.
+    local Switch = Toggle.Container:FindFirstChild("Switch")
+    if Switch then
+        Switch.Position = UDim2.new(1, -8, 0.5, -8)
+    end
+
+    local Picker = {
+        Type = "KeyPicker",
+        Key = Key,
+        Text = tostring(Options.Text or Options.Name or Key),
+        Mode = Mode,
+        Value = CurrentKey,
+        KeyCode = CurrentKey,
+        Active = Active,
+        Listening = Listening,
+        SyncToggleState = SyncToggleState,
+        Container = Toggle.Container,
+        Button = KeyButton,
+        Toggle = Toggle,
+        Callback = Options.Callback or function() end,
+        Changed = Options.Changed or function() end,
+        NoUI = Options.NoUI == true,
+    }
+
+    local function SafeCall(Callback, Value)
+        if type(Callback) ~= "function" then
+            return
+        end
+
+        task.spawn(function()
+            local Success, Error = pcall(Callback, Value)
+            if not Success then
+                warn("[MoonHub] KeyPicker callback error:", Error)
+            end
+        end)
+    end
+
+    local function UpdateButton()
+        if Destroyed or not KeyButton.Parent then
+            return
+        end
+
+        if Listening then
+            KeyButton.Text = "Press key..."
+            KeyButton.TextColor3 = Library.Theme.TextBright
+            KeyButton.BackgroundColor3 = Library.Theme.ElementHover
+        else
+            KeyButton.Text = CurrentKey.Name
+            KeyButton.TextColor3 = Active and Library.Theme.TextBright or Library.Theme.TextDim
+            KeyButton.BackgroundColor3 = Active and Library.Theme.Selected or Library.Theme.Panel
+        end
+    end
+
+    local function SetActive(NewValue, Fire)
+        Active = NewValue == true
+        Picker.Active = Active
+
+        if SyncToggleState then
+            if Toggle:GetValue() ~= Active then
+                Toggle:SetValue(Active)
+            end
+        end
+
+        UpdateButton()
+
+        if Fire ~= false then
+            SafeCall(Picker.Callback, Active)
+            SafeCall(Picker.Changed, Active)
+        end
+    end
+
+    function Picker:SetKey(NewKey)
+        CurrentKey = ResolveKey(NewKey)
+        Picker.Value = CurrentKey
+        Picker.KeyCode = CurrentKey
+        Listening = false
+        Picker.Listening = false
+        UpdateButton()
+        SafeCall(Picker.Changed, CurrentKey)
+        return Picker
+    end
+
+    function Picker:GetKey()
+        return CurrentKey
+    end
+
+    function Picker:SetValue(NewValue)
+        if typeof(NewValue) == "EnumItem" or type(NewValue) == "string" then
+            return self:SetKey(NewValue)
+        end
+
+        if type(NewValue) == "boolean" then
+            SetActive(NewValue)
+        end
+
+        return self
+    end
+
+    function Picker:GetValue()
+        return CurrentKey
+    end
+
+    function Picker:SetActive(NewValue)
+        SetActive(NewValue)
+        return self
+    end
+
+    function Picker:GetActive()
+        return Active
+    end
+
+    function Picker:Destroy()
+        if Destroyed then
+            return
+        end
+
+        Destroyed = true
+        Listening = false
+        Picker.Listening = false
+
+        if KeyButton and KeyButton.Parent then
+            KeyButton:Destroy()
+        end
+
+        local CurrentSwitch = Toggle.Container:FindFirstChild("Switch")
+        if CurrentSwitch then
+            CurrentSwitch.Position = UDim2.new(1, -40, 0.5, -8)
+        end
+
+        if Library.KeyPickers[Key] == Picker then
+            Library.KeyPickers[Key] = nil
+        end
+
+        if Toggle._KeyPicker == Picker then
+            Toggle._KeyPicker = nil
+        end
+    end
+
+    KeyButton.MouseEnter:Connect(function()
+        if not Listening then
+            Tween(KeyButton, 0.12, {
+                BackgroundColor3 = Active and Library.Theme.Selected or Library.Theme.ElementHover,
+                TextColor3 = Library.Theme.TextBright,
+            })
+        end
+    end)
+
+    KeyButton.MouseLeave:Connect(function()
+        if not Listening then
+            UpdateButton()
+        end
+    end)
+
+    KeyButton.MouseButton1Click:Connect(function()
+        Listening = true
+        Picker.Listening = true
+        UpdateButton()
+    end)
+
+    local InputBeganConnection
+    local InputEndedConnection
+
+    InputBeganConnection = UserInputService.InputBegan:Connect(function(Input, GameProcessed)
+        if Destroyed then
+            return
+        end
+
+        if Listening then
+            if Input.UserInputType == Enum.UserInputType.Keyboard then
+                if Input.KeyCode ~= Enum.KeyCode.Unknown then
+                    CurrentKey = Input.KeyCode
+                    Picker.Value = CurrentKey
+                    Picker.KeyCode = CurrentKey
+                    Listening = false
+                    Picker.Listening = false
+                    UpdateButton()
+                    SafeCall(Picker.Changed, CurrentKey)
+                end
+            elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
+                Listening = false
+                Picker.Listening = false
+                UpdateButton()
+            end
+            return
+        end
+
+        if GameProcessed then
+            return
+        end
+
+        if Input.UserInputType ~= Enum.UserInputType.Keyboard then
+            return
+        end
+
+        if Input.KeyCode ~= CurrentKey then
+            return
+        end
+
+        if Mode == "Hold" then
+            SetActive(true)
+        else
+            SetActive(not Active)
+        end
+    end)
+
+    if Mode == "Hold" then
+        InputEndedConnection = UserInputService.InputEnded:Connect(function(Input)
+            if Destroyed then
+                return
+            end
+
+            if Input.UserInputType == Enum.UserInputType.Keyboard
+                and Input.KeyCode == CurrentKey then
+                SetActive(false)
+            end
+        end)
+    end
+
+    -- Disconnect input listeners when the picker is destroyed.
+    local OriginalDestroy = Picker.Destroy
+    function Picker:Destroy()
+        if Destroyed then
+            return
+        end
+
+        OriginalDestroy(self)
+
+        pcall(function()
+            InputBeganConnection:Disconnect()
+        end)
+
+        pcall(function()
+            if InputEndedConnection then
+                InputEndedConnection:Disconnect()
+            end
+        end)
+    end
+
+    if Options.NoUI then
+        KeyButton.Visible = false
+    end
+
+    Toggle._KeyPicker = Picker
+    Toggle.KeyPicker = Picker
+    Library.KeyPickers[Key] = Picker
+
+    UpdateButton()
+
+    -- Obsidian davranışı: SyncToggleState ile picker ve toggle birbirine bağlı olur.
+    if SyncToggleState then
+        local OldChanged = Toggle.Changed
+        Toggle.Changed = function(Value)
+            if not Destroyed then
+                Active = Value == true
+                Picker.Active = Active
+                UpdateButton()
+            end
+
+            SafeCall(OldChanged, Value)
+        end
+
+        Active = Toggle:GetValue() == true
+        Picker.Active = Active
+        UpdateButton()
+    end
+
+    return Picker
+end
+
+-- Toggle:AddKeyPicker(...) is the Obsidian-style API.
+function ElementMethods:AddKeyPicker(Identifier, Info)
+    if self.Type ~= "Toggle" then
+        warn("[MoonHub] AddKeyPicker can only be used on a Toggle.")
+        return nil
+    end
+
+    return CreateToggleKeyPicker(self, Identifier, Info)
+end
+
+--//==================================================
 --// DROPDOWN
 --//==================================================
 
