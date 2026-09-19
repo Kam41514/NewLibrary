@@ -978,6 +978,13 @@ local function CreateToggle(Groupbox, Identifier, Info)
     end)
 
     Container.MouseButton1Click:Connect(function()
+        -- When a key picker is attached, clicking its key box must not also
+        -- toggle the parent toggle. The picker marks itself as Listening first.
+        local Picker = Toggle._KeyPicker
+        if Picker and Picker.Listening then
+            return
+        end
+
         Toggle:SetValue(not Value)
     end)
 
@@ -1307,7 +1314,9 @@ local function CreateToggleKeyPicker(Toggle, Identifier, Info)
     -- Switch'i key picker varken biraz sağa taşı.
     local Switch = Toggle.Container:FindFirstChild("Switch")
     if Switch then
-        Switch.Position = UDim2.new(1, -8, 0.5, -8)
+        -- Obsidian-style layout: key box at the far right, toggle switch
+        -- immediately to its left. Keep both controls on the same row.
+        Switch.Position = UDim2.new(1, -76, 0.5, -8)
     end
 
     local Picker = {
@@ -1327,6 +1336,13 @@ local function CreateToggleKeyPicker(Toggle, Identifier, Info)
         Changed = Options.Changed or function() end,
         NoUI = Options.NoUI == true,
     }
+
+    -- Make room for both the switch and the key box without overlapping the
+    -- toggle text.
+    local ToggleText = Toggle.Container:FindFirstChild("Text")
+    if ToggleText and ToggleText:IsA("TextLabel") then
+        ToggleText.Size = UDim2.new(1, -112, 1, 0)
+    end
 
     local function SafeCall(Callback, Value)
         if type(Callback) ~= "function" then
@@ -1413,6 +1429,20 @@ local function CreateToggleKeyPicker(Toggle, Identifier, Info)
 
     function Picker:GetActive()
         return Active
+    end
+
+    -- Obsidian-style event API.
+    -- Example:
+    -- KeyPicker:OnChanged(function(Value)
+    --     print(Value)
+    -- end)
+    function Picker:OnChanged(Callback)
+        if type(Callback) ~= "function" then
+            return self
+        end
+
+        self.Changed = Callback
+        return self
     end
 
     function Picker:Destroy()
@@ -1544,6 +1574,17 @@ local function CreateToggleKeyPicker(Toggle, Identifier, Info)
 
     if Options.NoUI then
         KeyButton.Visible = false
+
+        -- With no visible key box, use the normal toggle position again.
+        local HiddenSwitch = Toggle.Container:FindFirstChild("Switch")
+        if HiddenSwitch then
+            HiddenSwitch.Position = UDim2.new(1, -40, 0.5, -8)
+        end
+
+        local HiddenToggleText = Toggle.Container:FindFirstChild("Text")
+        if HiddenToggleText and HiddenToggleText:IsA("TextLabel") then
+            HiddenToggleText.Size = UDim2.new(1, -55, 1, 0)
+        end
     end
 
     Toggle._KeyPicker = Picker
