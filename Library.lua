@@ -2517,14 +2517,31 @@ local function RefreshMoonHubBackgrounds(Frame, TopBar, Explorer, Modules, Conte
 
     local Enabled = Library.Theme.GradientEnabled == true
 
-    SetMoonHubGradient(Frame, {
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(7, 25, 46)),
-        ColorSequenceKeypoint.new(0.20, Color3.fromRGB(10, 36, 61)),
-        ColorSequenceKeypoint.new(0.42, Color3.fromRGB(18, 57, 89)),
-        ColorSequenceKeypoint.new(0.62, Color3.fromRGB(20, 62, 95)),
-        ColorSequenceKeypoint.new(0.80, Color3.fromRGB(14, 46, 74)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(7, 25, 46)),
-    }, 35)
+    -- IMPORTANT:
+    -- The outer MainFrame itself must stay a completely solid color.
+    -- Its UIStroke is an INNER stroke, so putting a gradient directly on
+    -- MainFrame makes the anti-aliased edge visually blend with the gradient.
+    -- That creates the faint blue/light color shift on the extreme outer edge.
+    --
+    -- The gradient therefore lives on a 1px inset background layer instead.
+    -- This leaves the complete outer outline sitting over a single flat color.
+    -- Remove any legacy gradient that may have been attached directly to MainFrame.
+    local LegacyGradient = Frame:FindFirstChild("MoonHubGradient")
+    if LegacyGradient then
+        LegacyGradient:Destroy()
+    end
+
+    local BackgroundVisual = Frame:FindFirstChild("MainBackgroundVisual")
+    if BackgroundVisual then
+        SetMoonHubGradient(BackgroundVisual, {
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(7, 25, 46)),
+            ColorSequenceKeypoint.new(0.20, Color3.fromRGB(10, 36, 61)),
+            ColorSequenceKeypoint.new(0.42, Color3.fromRGB(18, 57, 89)),
+            ColorSequenceKeypoint.new(0.62, Color3.fromRGB(20, 62, 95)),
+            ColorSequenceKeypoint.new(0.80, Color3.fromRGB(14, 46, 74)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(7, 25, 46)),
+        }, 35)
+    end
 
     SetMoonHubGradient(TopBar, {
         ColorSequenceKeypoint.new(0, Color3.fromRGB(9, 32, 54)),
@@ -2560,7 +2577,14 @@ local function RefreshMoonHubBackgrounds(Frame, TopBar, Explorer, Modules, Conte
         ColorSequenceKeypoint.new(1, Color3.fromRGB(11, 37, 59)),
     }, 35)
 
-    for _, Object in ipairs({Frame, TopBar, Explorer, Modules, Content, SearchBox}) do
+    for _, Object in ipairs({
+        Frame:FindFirstChild("MainBackgroundVisual"),
+        TopBar,
+        Explorer,
+        Modules,
+        Content,
+        SearchBox
+    }) do
         if Object then
             local Gradient = Object:FindFirstChild("MoonHubGradient")
             if Gradient then
@@ -2622,6 +2646,22 @@ function Library:CreateWindow(Config)
         0,
         1
     )
+
+    -- Solid layer directly under the outer stroke.
+    -- The MoonHub gradient is applied to this layer instead of MainFrame,
+    -- keeping the entire extreme outer outline visually flat and uniform.
+    local BackgroundVisual = New("Frame", {
+        Name = "MainBackgroundVisual",
+        Position = UDim2.fromOffset(1, 1),
+        Size = UDim2.new(1, -2, 1, -2),
+        BackgroundColor3 = Library.Theme.Background,
+        BorderSizePixel = 0,
+        ClipsDescendants = true,
+        ZIndex = 0,
+        Parent = Frame,
+    })
+
+    Corner(BackgroundVisual, 8)
 
     EnsureMoonHubStars(Frame)
 
@@ -3127,9 +3167,19 @@ function Library:RefreshTheme()
         end
 
         if Object.Name == "MainFrame" then
+            -- MainFrame stays solid so the outer outline never blends with
+            -- a gradient at its anti-aliased edge.
             Object.BackgroundColor3 = Theme.Background
             ApplyStroke(Object, Theme.OutlineSoft, 0)
-        elseif Object.Name == "TopBar" then
+
+            local BackgroundVisual = Object:FindFirstChild("MainBackgroundVisual")
+            if BackgroundVisual then
+                BackgroundVisual.BackgroundColor3 = Theme.Background
+                ApplyStroke(BackgroundVisual, Theme.Background, 1)
+            end
+        elseif Object.Name == "MainBackgroundVisual" then
+            -- Its visual colors are refreshed by RefreshMoonHubBackgrounds.
+            Object.BackgroundColor3 = Theme.Background
             Object.BackgroundColor3 = Theme.Panel
         elseif Object.Name == "Explorer" or Object.Name == "Modules" then
             Object.BackgroundColor3 = Theme.Sidebar
